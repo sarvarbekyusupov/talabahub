@@ -1,25 +1,30 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString, IsInt, IsDateString, IsJSON } from 'class-validator';
+import { IsUzbekName, IsUzbekPhone } from '../../common/validators/custom-validators';
 
 export class UpdateProfileDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @IsUzbekName()
   firstName?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @IsUzbekName()
   lastName?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @IsUzbekName()
   middleName?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  @IsUzbekPhone()
   phone?: string;
 
   @ApiProperty({ required: false })

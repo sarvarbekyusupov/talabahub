@@ -18,6 +18,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Discounts')
@@ -26,6 +28,7 @@ export class DiscountsController {
   constructor(private readonly discountsService: DiscountsService) {}
 
   @Post()
+  @AuditLog(AuditAction.CREATE, 'Discount')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
@@ -137,6 +140,7 @@ export class DiscountsController {
   }
 
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'Discount')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
@@ -152,6 +156,7 @@ export class DiscountsController {
   }
 
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'Discount')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()

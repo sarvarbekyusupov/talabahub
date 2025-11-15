@@ -25,6 +25,8 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Categories')
@@ -33,6 +35,7 @@ export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
+  @AuditLog(AuditAction.CREATE, 'Category')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
@@ -107,6 +110,7 @@ export class CategoriesController {
   }
 
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'Category')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
@@ -124,6 +128,7 @@ export class CategoriesController {
   }
 
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'Category')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()

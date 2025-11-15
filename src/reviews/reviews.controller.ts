@@ -25,6 +25,8 @@ import { Review } from './entities/review.entity';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Reviews')
@@ -36,6 +38,7 @@ export class ReviewsController {
    * Create a new review (authenticated users only)
    */
   @Post()
+  @AuditLog(AuditAction.CREATE, 'Review')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create a new review',
@@ -273,6 +276,7 @@ export class ReviewsController {
    * Update a review (authenticated users only)
    */
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'Review')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update a review',
@@ -307,6 +311,7 @@ export class ReviewsController {
    * Delete a review (authenticated users only)
    */
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'Review')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Delete a review',

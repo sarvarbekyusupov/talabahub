@@ -18,6 +18,8 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Users')
@@ -28,6 +30,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
+  @AuditLog(AuditAction.CREATE, 'User')
   @Roles(UserRole.admin)
   @ApiOperation({ summary: 'Create a new user (Admin only)' })
   @ApiResponse({ status: 201, description: 'User created successfully' })
@@ -79,6 +82,7 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'User')
   @Roles(UserRole.admin)
   @ApiOperation({ summary: 'Update user by ID (Admin only)' })
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
@@ -86,6 +90,7 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'User')
   @Roles(UserRole.admin)
   @ApiOperation({ summary: 'Delete user by ID (Admin only)' })
   remove(@Param('id') id: string) {

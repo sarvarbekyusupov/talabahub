@@ -24,6 +24,8 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -38,6 +40,7 @@ export class EventsController {
    * Create a new event (Organizer/Admin only)
    */
   @Post()
+  @AuditLog(AuditAction.CREATE, 'Event')
   @Roles(UserRole.admin, UserRole.partner)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new event' })
@@ -163,6 +166,7 @@ export class EventsController {
    * Update event (Organizer only)
    */
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'Event')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an event' })
   @ApiParam({ name: 'id', description: 'Event ID (UUID)' })
@@ -181,6 +185,7 @@ export class EventsController {
    * Delete event (Organizer only)
    */
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'Event')
   @HttpCode(204)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an event' })

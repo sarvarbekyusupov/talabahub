@@ -22,6 +22,8 @@ import { UpdateUniversityDto } from './dto/update-university.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Universities')
@@ -30,6 +32,7 @@ export class UniversitiesController {
   constructor(private readonly universitiesService: UniversitiesService) {}
 
   @Post()
+  @AuditLog(AuditAction.CREATE, 'University')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
@@ -68,6 +71,7 @@ export class UniversitiesController {
   }
 
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'University')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
@@ -81,6 +85,7 @@ export class UniversitiesController {
   }
 
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'University')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
