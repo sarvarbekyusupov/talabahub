@@ -28,6 +28,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Blog Posts')
@@ -39,6 +41,7 @@ export class BlogPostsController {
    * Create a new blog post (Authenticated - Students and Admins)
    */
   @Post()
+  @AuditLog(AuditAction.CREATE, 'BlogPost')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Create a new blog post',
@@ -401,6 +404,7 @@ export class BlogPostsController {
    * Update a blog post (Authenticated - Author or Admin)
    */
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'BlogPost')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Update a blog post',
@@ -585,6 +589,7 @@ export class BlogPostsController {
    * Delete a blog post (Authenticated - Author or Admin)
    */
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'BlogPost')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({

@@ -26,6 +26,8 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Jobs')
@@ -40,6 +42,7 @@ export class JobsController {
    * Only accessible by admin and partner roles
    */
   @Post()
+  @AuditLog(AuditAction.CREATE, 'Job')
   @Roles(UserRole.admin, UserRole.partner)
   @ApiOperation({ summary: 'Create a new job posting (Admin/Partner only)' })
   @ApiResponse({
@@ -326,6 +329,7 @@ export class JobsController {
    * Only accessible by admin and partner roles
    */
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'Job')
   @Roles(UserRole.admin, UserRole.partner)
   @ApiOperation({ summary: 'Update a job posting (Admin/Partner only)' })
   @ApiResponse({
@@ -356,6 +360,7 @@ export class JobsController {
    * Only accessible by admin and partner roles
    */
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'Job')
   @Roles(UserRole.admin, UserRole.partner)
   @ApiOperation({ summary: 'Delete a job posting (Admin/Partner only)' })
   @ApiResponse({

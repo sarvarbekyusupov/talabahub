@@ -24,6 +24,8 @@ import { UpdateEducationPartnerDto } from './dto/update-education-partner.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 
 @ApiTags('Education Partners')
 @Controller('education-partners')
@@ -35,6 +37,7 @@ export class EducationPartnersController {
    * Create a new education partner (Admin and Partner roles only)
    */
   @Post()
+  @AuditLog(AuditAction.CREATE, 'EducationPartner')
   @Roles('admin', 'partner')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new education partner' })
@@ -275,6 +278,7 @@ export class EducationPartnersController {
    * Update an education partner (Admin and Partner roles only)
    */
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'EducationPartner')
   @Roles('admin', 'partner')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an education partner' })
@@ -298,6 +302,7 @@ export class EducationPartnersController {
    * Delete an education partner (Admin only)
    */
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'EducationPartner')
   @Roles('admin')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an education partner (Admin only)' })

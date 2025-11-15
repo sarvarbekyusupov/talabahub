@@ -23,6 +23,8 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Brands')
@@ -31,6 +33,7 @@ export class BrandsController {
   constructor(private readonly brandsService: BrandsService) {}
 
   @Post()
+  @AuditLog(AuditAction.CREATE, 'Brand')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
@@ -110,6 +113,7 @@ export class BrandsController {
   }
 
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'Brand')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
@@ -125,6 +129,7 @@ export class BrandsController {
   }
 
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'Brand')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()

@@ -29,6 +29,8 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { CourseLevel, UserRole } from '@prisma/client';
 
 @ApiTags('Courses')
@@ -40,6 +42,7 @@ export class CoursesController {
    * Create a new course (Admin/Partner only)
    */
   @Post()
+  @AuditLog(AuditAction.CREATE, 'Course')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin, UserRole.partner)
   @ApiBearerAuth()
@@ -220,6 +223,7 @@ export class CoursesController {
    * Update course (Admin/Partner only)
    */
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'Course')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin, UserRole.partner)
   @ApiBearerAuth()
@@ -239,6 +243,7 @@ export class CoursesController {
    * Delete course (Admin only)
    */
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'Course')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()

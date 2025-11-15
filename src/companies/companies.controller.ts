@@ -23,6 +23,8 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { AuditLog } from '../common/decorators/audit.decorator';
+import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('Companies')
@@ -31,6 +33,7 @@ export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
   @Post()
+  @AuditLog(AuditAction.CREATE, 'Company')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin, UserRole.partner)
   @ApiBearerAuth()
@@ -82,6 +85,7 @@ export class CompaniesController {
   }
 
   @Patch(':id')
+  @AuditLog(AuditAction.UPDATE, 'Company')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin, UserRole.partner)
   @ApiBearerAuth()
@@ -97,6 +101,7 @@ export class CompaniesController {
   }
 
   @Delete(':id')
+  @AuditLog(AuditAction.DELETE, 'Company')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
   @ApiBearerAuth()
