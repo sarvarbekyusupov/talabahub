@@ -7,6 +7,7 @@ import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 import { PerformanceInterceptor } from "./common/interceptors/performance.interceptor";
 import { LoggerService } from "./logger/logger.service";
+import helmet from "helmet";
 
 async function start() {
   try {
@@ -32,6 +33,16 @@ async function start() {
     // Get custom logger service
     const loggerService = app.get(LoggerService);
     app.useLogger(loggerService);
+
+    // Security headers with Helmet
+    app.use(
+      helmet({
+        contentSecurityPolicy:
+          NODE_ENV === "production"
+            ? undefined
+            : false, // Disable in dev for Swagger
+      })
+    );
 
     app.use(cookieParser());
     app.setGlobalPrefix("api");
