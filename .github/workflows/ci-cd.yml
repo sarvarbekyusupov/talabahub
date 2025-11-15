@@ -157,7 +157,52 @@ jobs:
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            cd /var/www/talabahub-backend
+            # Create directory in home folder (ubuntu user has permission)
+            mkdir -p ~/talabahub-backend
+            cd ~/talabahub-backend
+
+            # Create .env file if it doesn't exist
+            if [ ! -f .env ]; then
+              echo "Creating default .env file..."
+              cat > .env << 'ENVEOF'
+            # Database
+            DB_USER=talabahub
+            DB_PASSWORD=talabahub_secure_password_change_me
+            DB_NAME=talabahub
+            DB_PORT=5432
+
+            # Redis
+            REDIS_PASSWORD=redis_secure_password_change_me
+            REDIS_PORT=6379
+
+            # JWT Secrets (CHANGE THESE!)
+            JWT_ACCESS_SECRET=change_this_to_random_secret_key_min_32_chars
+            JWT_REFRESH_SECRET=change_this_to_another_random_secret_key_min_32_chars
+
+            # Email (Configure your email provider)
+            MAIL_HOST=smtp.gmail.com
+            MAIL_PORT=587
+            MAIL_USER=your-email@gmail.com
+            MAIL_PASSWORD=your-app-password
+            MAIL_FROM=noreply@talabahub.com
+
+            # Cloudinary (Optional - for file uploads)
+            CLOUDINARY_CLOUD_NAME=
+            CLOUDINARY_API_KEY=
+            CLOUDINARY_API_SECRET=
+
+            # Frontend URL
+            FRONTEND_URL=http://localhost:5173
+
+            # Rate limiting
+            THROTTLE_TTL=60000
+            THROTTLE_LIMIT=10
+            ENVEOF
+              echo "⚠️  .env file created with default values. Please update with real credentials!"
+            fi
+
+            # Create logs directory
+            mkdir -p logs
 
             # Create docker-compose.prod.yml
             cat > docker-compose.prod.yml << 'EOF'
