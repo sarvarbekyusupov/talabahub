@@ -210,13 +210,12 @@ export class UploadService {
     try {
       this.logger.log(`Optimizing image: ${file.originalname} (${file.size} bytes)`);
 
-      const optimized = await sharp(file.buffer)
-        .resize(width, height, {
-          fit: 'inside', // Maintain aspect ratio
-          withoutEnlargement: true, // Don't upscale small images
-        })
-        [format]({ quality }) // Convert to specified format
-        .toBuffer();
+      const sharpInstance = sharp(file.buffer).resize(width, height, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
+
+      const optimized = await sharpInstance[format]({ quality }).toBuffer();
 
       const originalSize = (file.size / 1024).toFixed(2);
       const optimizedSize = (optimized.length / 1024).toFixed(2);
