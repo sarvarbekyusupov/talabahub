@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -22,6 +23,7 @@ import { UploadModule } from './upload/upload.module';
 import { PaymentModule } from './payment/payment.module';
 import { LoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
+import { CacheModule } from './cache/cache.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -29,6 +31,16 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          ttl: config.get('THROTTLE_TTL') || 60000, // 60 seconds
+          limit: config.get('THROTTLE_LIMIT') || 10, // 10 requests
+        },
+      ],
     }),
     PrismaModule,
     AuthModule,
@@ -49,6 +61,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     PaymentModule,
     LoggerModule,
     HealthModule,
+    CacheModule,
   ],
   controllers: [AppController],
   providers: [
@@ -56,6 +69,10 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

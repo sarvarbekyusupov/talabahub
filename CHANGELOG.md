@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - November 15, 2025
+
+#### Performance Optimizations
+- **Pagination System** - Global pagination utility with PaginationDto and helper functions
+  - Default 20 items per page, max 100
+  - Consistent response format with metadata
+  - Easy integration with Prisma queries
+- **Caching Layer** - In-memory caching with @nestjs/cache-manager
+  - Default 10-minute TTL
+  - Global cache module
+  - Cache decorators (@CacheKey, @CacheTTL)
+  - Ready for Redis upgrade
+- **Database Indexes** - Already optimized in Prisma schema
+  - User table: email, phone, universityId, verificationStatus, referralCode
+  - Category table: slug, parentId
+  - Brand table: slug, categoryId
+  - Additional indexes on other models
+
+#### Security Improvements
+- **Rate Limiting** - @nestjs/throttler integration
+  - Global rate limiting (10 req/60s default)
+  - Configurable via environment variables
+  - Route-specific override support (@Throttle, @SkipThrottle decorators)
+- **Helmet Security Headers** - HTTP security headers
+  - X-DNS-Prefetch-Control
+  - X-Frame-Options (clickjacking protection)
+  - X-Content-Type-Options (MIME sniffing prevention)
+  - Strict-Transport-Security (HTTPS enforcement)
+  - Content-Security-Policy
+  - Disabled in development for Swagger compatibility
+- **Input Sanitization** - XSS prevention pipe
+  - SanitizePipe for sanitizing all user input
+  - Removes HTML tags and scripts
+  - Works with nested objects and arrays
+  - Prevents script injection attacks
+
+### Changed
+- App Module updated with new optimization modules
+- Main.ts updated with Helmet middleware
+- Environment configuration updated for rate limiting
+
+### Documentation
+- Added OPTIMIZATION_GUIDE.md with complete optimization documentation
+- Updated docs/README.md with optimization references
+
+
 ## [1.0.0] - 2025-11-15
 
 ### Added - Core Features
