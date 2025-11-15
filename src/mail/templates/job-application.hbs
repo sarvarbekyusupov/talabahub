@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Job Application Received</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #10B981; color: white; padding: 20px; text-align: center; }
+        .content { background: #f9f9f9; padding: 30px; }
+        .job-info { background: white; padding: 20px; margin: 20px 0; border-left: 4px solid #10B981; }
+        .button { display: inline-block; padding: 12px 30px; background: #10B981; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Application Received! ✅</h1>
+        </div>
+        <div class="content">
+            <h2>Hello {{name}},</h2>
+            <p>Your job application has been successfully submitted!</p>
+
+            <div class="job-info">
+                <h3>{{jobTitle}}</h3>
+                <p><strong>Company:</strong> {{companyName}}</p>
+                <p><strong>Status:</strong> Under Review</p>
+            </div>
+
+            <p>We'll notify you as soon as there's an update on your application.</p>
+
+            <a href="{{dashboardUrl}}" class="button">View My Applications</a>
+
+            <p>Good luck! 🍀</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 TalabaHub. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
