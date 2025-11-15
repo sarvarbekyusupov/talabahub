@@ -26,7 +26,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { UserRole } from '../types/prisma-client';
+import { UserRole } from '@prisma/client';
 
 @ApiTags('Jobs')
 @Controller('jobs')

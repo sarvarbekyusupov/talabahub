@@ -72,7 +72,7 @@ export class CreateDiscountDto {
     description: 'Type of discount',
   })
   @IsString()
-  discountType: string;
+  discountType: 'percentage' | 'fixed_amount' | 'promo_code';
 
   @ApiProperty({
     example: 20,

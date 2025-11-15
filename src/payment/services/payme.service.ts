@@ -25,8 +25,8 @@ export class PaymeService {
   private transactions: Map<string, PaymeTransaction> = new Map();
 
   constructor(private readonly configService: ConfigService) {
-    this.merchantId = this.configService.get('PAYME_MERCHANT_ID');
-    this.secretKey = this.configService.get('PAYME_SECRET_KEY');
+    this.merchantId = this.configService.get<string>('PAYME_MERCHANT_ID') || '';
+    this.secretKey = this.configService.get<string>('PAYME_SECRET_KEY') || '';
   }
 
   /**
