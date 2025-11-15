@@ -8,6 +8,7 @@ import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
 import { PerformanceInterceptor } from "./common/interceptors/performance.interceptor";
 import { LoggerService } from "./logger/logger.service";
 import helmet from "helmet";
+import * as compression from "compression";
 
 async function start() {
   try {
@@ -43,6 +44,9 @@ async function start() {
             : false, // Disable in dev for Swagger
       })
     );
+
+    // Enable response compression (gzip)
+    app.use(compression());
 
     app.use(cookieParser());
     app.setGlobalPrefix("api");

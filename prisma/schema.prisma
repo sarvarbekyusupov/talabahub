@@ -5,6 +5,10 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+
+  // Connection pooling configuration
+  // For production: set connection_limit in DATABASE_URL
+  // Example: postgresql://user:pass@localhost:5432/db?connection_limit=10&pool_timeout=20
 }
 
 // ============================================
