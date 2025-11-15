@@ -20,6 +20,8 @@ import { EventsModule } from './events/events.module';
 import { MailModule } from './mail/mail.module';
 import { UploadModule } from './upload/upload.module';
 import { PaymentModule } from './payment/payment.module';
+import { LoggerModule } from './logger/logger.module';
+import { HealthModule } from './health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -45,6 +47,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     MailModule,
     UploadModule,
     PaymentModule,
+    LoggerModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
