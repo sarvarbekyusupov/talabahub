@@ -25,6 +25,8 @@ import { LoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
 import { CacheModule } from './cache/cache.module';
 import { QueueModule } from './queue/queue.module';
+import { AuditModule } from './audit/audit.module';
+import { SearchModule } from './search/search.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -64,6 +66,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     HealthModule,
     CacheModule,
     QueueModule,
+    AuditModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [
