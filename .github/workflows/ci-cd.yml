@@ -204,6 +204,10 @@ jobs:
             # Create logs directory
             mkdir -p logs
 
+            # Stop and remove old containers if they exist
+            echo "🧹 Cleaning up old containers..."
+            docker compose -f docker-compose.prod.yml down 2>/dev/null || true
+
             # Create docker-compose.prod.yml
             cat > docker-compose.prod.yml << 'EOF'
             services:
