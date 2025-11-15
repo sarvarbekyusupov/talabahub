@@ -344,6 +344,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Migration scripts for search indexes
   - Performance tuning and monitoring
   - Troubleshooting common issues
+- Added FRONTEND_INTEGRATION_GUIDE.md - Complete API integration guide for frontend developers (3000+ lines)
+  - All authentication flows with code examples
+  - Complete endpoint documentation for all 25 modules
+  - Request/response examples for every API
+  - Error handling best practices
+  - Token management and auto-refresh examples
+  - File upload examples (images, documents, avatars)
+  - Payment integration (Click.uz, Payme)
+  - Search and autocomplete implementation
+  - Pagination helpers and utilities
+  - Rate limiting and retry logic
+  - Axios interceptor setup
+  - TypeScript interfaces for all DTOs
 - Updated docs/README.md with optimization references
 - Added 9 performance optimizations and 4 security improvements
 - Updated version to 2.0.0 in OPTIMIZATION_GUIDE.md
@@ -371,6 +384,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `src/search/` - Full-text search module (service, controller, module)
 - `docs/FEATURES_GUIDE.md` - Comprehensive features documentation
 - `docs/SEARCH_INDEXING.md` - PostgreSQL full-text search optimization guide
+- `docs/FRONTEND_INTEGRATION_GUIDE.md` - Complete frontend API integration guide
 
 ### Dependencies Added
 - `compression` - API response compression
