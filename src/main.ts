@@ -4,6 +4,9 @@ import * as cookieParser from "cookie-parser";
 import { BadRequestException, ValidationPipe, Logger } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
+import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
+import { PerformanceInterceptor } from "./common/interceptors/performance.interceptor";
+import { LoggerService } from "./logger/logger.service";
 
 async function start() {
   try {
@@ -26,10 +29,20 @@ async function start() {
       logger: logLevels,
     });
 
+    // Get custom logger service
+    const loggerService = app.get(LoggerService);
+    app.useLogger(loggerService);
+
     app.use(cookieParser());
     app.setGlobalPrefix("api");
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     app.useGlobalFilters(new AllExceptionsFilter());
+
+    // Add logging and performance monitoring interceptors
+    app.useGlobalInterceptors(
+      new LoggingInterceptor(loggerService),
+      new PerformanceInterceptor(loggerService),
+    );
 
     // app.enableCors({
     //   origin: (origin, callback) => {
@@ -96,6 +109,7 @@ async function start() {
       .addTag("Blog Posts")
       .addTag("Events")
       .addTag("Reviews")
+      .addTag("Health")
       .build();
 
     const swaggerDoc = SwaggerModule.createDocument(app, swaggerConfig);
@@ -108,23 +122,27 @@ async function start() {
 
     await app.listen(PORT);
 
-    const logger = new Logger("Bootstrap");
-    logger.log(`🚀 Server is running on http://localhost:${PORT}`);
-    logger.log(`📚 Swagger docs available at http://localhost:${PORT}/api`);
-    logger.log(`🌍 Environment: ${NODE_ENV}`);
-    logger.log(`📊 Log levels: ${logLevels.join(", ")}`);
+    loggerService.setContext("Bootstrap");
+    loggerService.log(`🚀 Server is running on http://localhost:${PORT}`);
+    loggerService.log(`📚 Swagger docs available at http://localhost:${PORT}/api`);
+    loggerService.log(`🩺 Health check available at http://localhost:${PORT}/api/health`);
+    loggerService.log(`📊 Metrics available at http://localhost:${PORT}/api/health/metrics`);
+    loggerService.log(`🌍 Environment: ${NODE_ENV}`);
+    loggerService.log(`📊 Log levels: ${logLevels.join(", ")}`);
 
     // Log production readiness status
     if (NODE_ENV === "production") {
-      logger.log(
-        "🔒 Production mode - Enhanced security and optimized logging enabled"
+      loggerService.log(
+        "🔒 Production mode - Enhanced logging, monitoring, and performance tracking enabled"
       );
+      loggerService.log("📝 Logs are being written to: logs/ directory");
     } else {
-      logger.warn("⚠️  Development mode - All logging levels enabled");
+      loggerService.warn("⚠️  Development mode - All logging levels enabled");
     }
   } catch (error) {
     const logger = new Logger("Bootstrap");
-    logger.error("❌ Failed to start server:", error);
+    logger.error("❌ Failed to start server:");
+    logger.error(error);
     process.exit(1);
   }
 }
