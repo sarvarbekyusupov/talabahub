@@ -204,9 +204,11 @@ jobs:
           script: |
             cd /var/www/talabahub-backend
 
-            # Backup current version
-            echo "Creating backup of current deployment..."
-            docker tag talabahub-backend:latest talabahub-backend:backup-$(date +%Y%m%d-%H%M%S) || true
+            # Save timestamp for backup
+            BACKUP_TAG="backup-$(date +%Y%m%d-%H%M%S)"
+
+            # Get current container ID before deploying
+            OLD_CONTAINER=$(docker-compose ps -q backend 2>/dev/null || echo "")
 
             # Pull new version
             echo "Pulling new version..."
@@ -216,21 +218,44 @@ jobs:
             echo "Deploying new version..."
             docker-compose up -d --force-recreate
 
-            # Health check
-            echo "Waiting for application to start..."
-            sleep 10
+            # Wait for container to start and run migrations
+            echo "Waiting for application to start (30 seconds for migrations)..."
+            sleep 30
 
-            # Check if deployment was successful
-            if curl -f http://localhost:3030/api/health/live; then
-              echo "✅ Deployment successful!"
-              docker image prune -f
-              exit 0
-            else
-              echo "❌ Health check failed! Rolling back..."
-              docker tag talabahub-backend:backup-$(date +%Y%m%d)* talabahub-backend:latest
-              docker-compose up -d --force-recreate
-              exit 1
+            # Check container logs for any errors
+            echo "Checking container logs..."
+            docker-compose logs --tail=20 backend
+
+            # Health check with retries
+            echo "Running health check..."
+            MAX_RETRIES=5
+            RETRY_COUNT=0
+
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              if curl -f http://localhost:3030/api/health/live; then
+                echo "✅ Deployment successful!"
+                docker image prune -f
+                exit 0
+              fi
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "Health check attempt $RETRY_COUNT/$MAX_RETRIES failed, retrying in 5 seconds..."
+              sleep 5
+            done
+
+            # Health check failed after all retries
+            echo "❌ Health check failed after $MAX_RETRIES attempts!"
+            echo "Showing recent logs:"
+            docker-compose logs --tail=50 backend
+
+            # Rollback if old container existed
+            if [ -n "$OLD_CONTAINER" ]; then
+              echo "Rolling back to previous version..."
+              docker-compose down
+              docker tag ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:main ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
+              docker-compose up -d
             fi
+
+            exit 1
 
       - name: Rollback on failure
         if: failure()
