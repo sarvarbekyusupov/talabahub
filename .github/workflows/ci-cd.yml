@@ -194,6 +194,19 @@ jobs:
       url: https://api.talabahub.com
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "/var/www/talabahub-backend"
+          strip_components: 0
+
       - name: Deploy to production server
         id: deploy
         uses: appleboy/ssh-action@v1.0.0
@@ -201,22 +214,23 @@ jobs:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          envs: DOCKER_USERNAME
           script: |
             cd /var/www/talabahub-backend
 
-            # Save timestamp for backup
-            BACKUP_TAG="backup-$(date +%Y%m%d-%H%M%S)"
+            # Use production docker-compose file
+            export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
 
             # Get current container ID before deploying
-            OLD_CONTAINER=$(docker-compose ps -q backend 2>/dev/null || echo "")
+            OLD_CONTAINER=$(docker-compose -f docker-compose.prod.yml ps -q backend 2>/dev/null || echo "")
 
             # Pull new version
             echo "Pulling new version..."
-            docker-compose pull
+            docker-compose -f docker-compose.prod.yml pull backend
 
             # Deploy new version
             echo "Deploying new version..."
-            docker-compose up -d --force-recreate
+            docker-compose -f docker-compose.prod.yml up -d --force-recreate
 
             # Wait for container to start and run migrations
             echo "Waiting for application to start (30 seconds for migrations)..."
@@ -224,7 +238,7 @@ jobs:
 
             # Check container logs for any errors
             echo "Checking container logs..."
-            docker-compose logs --tail=20 backend
+            docker-compose -f docker-compose.prod.yml logs --tail=20 backend
 
             # Health check with retries
             echo "Running health check..."
@@ -245,14 +259,13 @@ jobs:
             # Health check failed after all retries
             echo "❌ Health check failed after $MAX_RETRIES attempts!"
             echo "Showing recent logs:"
-            docker-compose logs --tail=50 backend
+            docker-compose -f docker-compose.prod.yml logs --tail=50 backend
 
             # Rollback if old container existed
             if [ -n "$OLD_CONTAINER" ]; then
               echo "Rolling back to previous version..."
-              docker-compose down
-              docker tag ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:main ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
-              docker-compose up -d
+              docker-compose -f docker-compose.prod.yml down backend
+              docker-compose -f docker-compose.prod.yml up -d backend
             fi
 
             exit 1
@@ -266,10 +279,8 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
             cd /var/www/talabahub-backend
-            echo "Rolling back to previous version..."
-            docker tag talabahub-backend:backup-* talabahub-backend:latest
-            docker-compose up -d --force-recreate
-            echo "⚠️ Rollback completed"
+            echo "⚠️ Deployment failed - rollback already attempted in deploy step"
+            docker-compose -f docker-compose.prod.yml ps
 
       - name: Notify deployment success
         if: success()
