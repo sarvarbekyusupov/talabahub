@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Course Completion Certificate</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #F59E0B; color: white; padding: 20px; text-align: center; }
+        .content { background: #f9f9f9; padding: 30px; }
+        .achievement { background: white; padding: 30px; margin: 20px 0; border-radius: 5px; text-align: center; }
+        .button { display: inline-block; padding: 12px 30px; background: #F59E0B; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Congratulations! 🎉</h1>
+        </div>
+        <div class="content">
+            <h2>Well Done, {{name}}!</h2>
+            <p>You have successfully completed the course!</p>
+
+            <div class="achievement">
+                <h3>{{courseTitle}}</h3>
+                <p style="font-size: 48px; margin: 20px 0;">🏆</p>
+                <p><strong>Your certificate is ready!</strong></p>
+            </div>
+
+            <a href="{{certificateUrl}}" class="button">Download Certificate</a>
+
+            <p>Share your achievement on social media and LinkedIn to showcase your new skills!</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 TalabaHub. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

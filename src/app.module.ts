@@ -17,6 +17,9 @@ import { CoursesModule } from './courses/courses.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { BlogPostsModule } from './blog-posts/blog-posts.module';
 import { EventsModule } from './events/events.module';
+import { MailModule } from './mail/mail.module';
+import { UploadModule } from './upload/upload.module';
+import { PaymentModule } from './payment/payment.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -39,6 +42,9 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     ReviewsModule,
     BlogPostsModule,
     EventsModule,
+    MailModule,
+    UploadModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [
