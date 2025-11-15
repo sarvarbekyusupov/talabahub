@@ -520,6 +520,7 @@ model BlogPost {
   viewCount       Int       @default(0) @map("view_count")
   readTimeMinutes Int?      @map("read_time_minutes")
   status          String    @default("draft") @db.VarChar(20)
+  featured        Boolean   @default(false)
   publishedAt     DateTime? @map("published_at")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
@@ -528,6 +529,9 @@ model BlogPost {
   category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([slug])
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([status])
   @@map("blog_posts")
 }
 

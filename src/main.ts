@@ -3,6 +3,7 @@ import { AppModule } from "./app.module";
 import * as cookieParser from "cookie-parser";
 import { BadRequestException, ValidationPipe, Logger } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 
 async function start() {
   try {
@@ -28,7 +29,7 @@ async function start() {
     app.use(cookieParser());
     app.setGlobalPrefix("api");
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-    // app.useGlobalFilters(new AllExceptionsFilter());
+    app.useGlobalFilters(new AllExceptionsFilter());
 
     // app.enableCors({
     //   origin: (origin, callback) => {
@@ -68,8 +69,8 @@ async function start() {
     });
 
     const swaggerConfig = new DocumentBuilder()
-      .setTitle("UIMS API")
-      .setDescription("UIMS Management System API Documentation")
+      .setTitle("TalabaHub API")
+      .setDescription("TalabaHub University Students Platform API Documentation")
       .setVersion("1.0")
       .addBearerAuth(
         {
@@ -82,9 +83,19 @@ async function start() {
         },
         "JWT-auth"
       )
-      .addTag("UIMS API")
-      .addSecurityRequirements("bearer", ["bearer"])
-      .addBearerAuth()
+      .addTag("Authentication")
+      .addTag("Users")
+      .addTag("Universities")
+      .addTag("Categories")
+      .addTag("Brands")
+      .addTag("Discounts")
+      .addTag("Companies")
+      .addTag("Jobs")
+      .addTag("Education Partners")
+      .addTag("Courses")
+      .addTag("Blog Posts")
+      .addTag("Events")
+      .addTag("Reviews")
       .build();
 
     const swaggerDoc = SwaggerModule.createDocument(app, swaggerConfig);
@@ -92,7 +103,7 @@ async function start() {
       swaggerOptions: {
         persistAuthorization: true,
       },
-      customSiteTitle: "JAFA ENERGY API Documentation",
+      customSiteTitle: "TalabaHub API Documentation",
     });
 
     await app.listen(PORT);

@@ -1,26 +1,373 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateEducationPartnerDto } from './dto/create-education-partner.dto';
 import { UpdateEducationPartnerDto } from './dto/update-education-partner.dto';
+import { EducationPartner, Prisma } from '@prisma/client';
 
 @Injectable()
 export class EducationPartnersService {
-  create(createEducationPartnerDto: CreateEducationPartnerDto) {
-    return 'This action adds a new educationPartner';
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Create a new education partner
+   */
+  async create(createEducationPartnerDto: CreateEducationPartnerDto): Promise<EducationPartner> {
+    // Check if slug already exists
+    const existingPartner = await this.prisma.educationPartner.findUnique({
+      where: { slug: createEducationPartnerDto.slug },
+    });
+
+    if (existingPartner) {
+      throw new BadRequestException('Partner with this slug already exists');
+    }
+
+    return this.prisma.educationPartner.create({
+      data: {
+        name: createEducationPartnerDto.name,
+        slug: createEducationPartnerDto.slug,
+        logoUrl: createEducationPartnerDto.logoUrl,
+        bannerUrl: createEducationPartnerDto.bannerUrl,
+        description: createEducationPartnerDto.description,
+        website: createEducationPartnerDto.website,
+        email: createEducationPartnerDto.email,
+        phone: createEducationPartnerDto.phone,
+        address: createEducationPartnerDto.address,
+        socialMedia: createEducationPartnerDto.socialMedia,
+        commissionRate: createEducationPartnerDto.commissionRate
+          ? new Prisma.Decimal(createEducationPartnerDto.commissionRate)
+          : new Prisma.Decimal(10),
+      },
+    });
   }
 
-  findAll() {
-    return `This action returns all educationPartners`;
+  /**
+   * Get all education partners with pagination and filtering
+   */
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    isActive?: boolean,
+    isVerified?: boolean,
+  ): Promise<{ data: (EducationPartner & { courseCount: number })[]; total: number; page: number; limit: number }> {
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.EducationPartnerWhereInput = {};
+    if (isActive !== undefined) where.isActive = isActive;
+    if (isVerified !== undefined) where.isVerified = isVerified;
+
+    const [partners, total] = await Promise.all([
+      this.prisma.educationPartner.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.educationPartner.count({ where }),
+    ]);
+
+    // Get course count for each partner
+    const partnersWithCounts = await Promise.all(
+      partners.map(async (partner) => {
+        const courseCount = await this.prisma.course.count({
+          where: { partnerId: partner.id },
+        });
+        return {
+          ...partner,
+          courseCount,
+        };
+      }),
+    );
+
+    return {
+      data: partnersWithCounts,
+      total,
+      page,
+      limit,
+    };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} educationPartner`;
+  /**
+   * Get a single education partner by ID with course count
+   */
+  async findOne(id: number): Promise<EducationPartner & { courseCount: number }> {
+    const partner = await this.prisma.educationPartner.findUnique({
+      where: { id },
+    });
+
+    if (!partner) {
+      throw new NotFoundException(`Education partner with ID ${id} not found`);
+    }
+
+    const courseCount = await this.prisma.course.count({
+      where: { partnerId: id },
+    });
+
+    return {
+      ...partner,
+      courseCount,
+    };
   }
 
-  update(id: number, updateEducationPartnerDto: UpdateEducationPartnerDto) {
-    return `This action updates a #${id} educationPartner`;
+  /**
+   * Update an education partner
+   */
+  async update(id: number, updateEducationPartnerDto: UpdateEducationPartnerDto): Promise<EducationPartner> {
+    const partner = await this.prisma.educationPartner.findUnique({
+      where: { id },
+    });
+
+    if (!partner) {
+      throw new NotFoundException(`Education partner with ID ${id} not found`);
+    }
+
+    // Check if slug is being changed and if new slug already exists
+    if (updateEducationPartnerDto.slug && updateEducationPartnerDto.slug !== partner.slug) {
+      const existingPartner = await this.prisma.educationPartner.findUnique({
+        where: { slug: updateEducationPartnerDto.slug },
+      });
+      if (existingPartner) {
+        throw new BadRequestException('Partner with this slug already exists');
+      }
+    }
+
+    return this.prisma.educationPartner.update({
+      where: { id },
+      data: {
+        ...updateEducationPartnerDto,
+        commissionRate: updateEducationPartnerDto.commissionRate
+          ? new Prisma.Decimal(updateEducationPartnerDto.commissionRate)
+          : undefined,
+      },
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} educationPartner`;
+  /**
+   * Delete an education partner
+   */
+  async remove(id: number): Promise<EducationPartner> {
+    const partner = await this.prisma.educationPartner.findUnique({
+      where: { id },
+    });
+
+    if (!partner) {
+      throw new NotFoundException(`Education partner with ID ${id} not found`);
+    }
+
+    return this.prisma.educationPartner.delete({
+      where: { id },
+    });
+  }
+
+  /**
+   * Get all courses for a specific education partner
+   */
+  async getPartnerCourses(
+    partnerId: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ data: any[]; total: number; page: number; limit: number }> {
+    const partner = await this.prisma.educationPartner.findUnique({
+      where: { id: partnerId },
+    });
+
+    if (!partner) {
+      throw new NotFoundException(`Education partner with ID ${partnerId} not found`);
+    }
+
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+
+    const skip = (page - 1) * limit;
+
+    const [courses, total] = await Promise.all([
+      this.prisma.course.findMany({
+        where: { partnerId },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          category: {
+            select: {
+              id: true,
+              nameUz: true,
+              nameEn: true,
+              slug: true,
+            },
+          },
+        },
+      }),
+      this.prisma.course.count({
+        where: { partnerId },
+      }),
+    ]);
+
+    return {
+      data: courses,
+      total,
+      page,
+      limit,
+    };
+  }
+
+  /**
+   * Get partner statistics including total courses, students, and revenue
+   */
+  async getPartnerStats(partnerId: number): Promise<{
+    partnerId: number;
+    totalCourses: number;
+    activeCourses: number;
+    totalStudents: number;
+    totalRevenue: number;
+    averageRating: number;
+    totalReviews: number;
+  }> {
+    const partner = await this.prisma.educationPartner.findUnique({
+      where: { id: partnerId },
+    });
+
+    if (!partner) {
+      throw new NotFoundException(`Education partner with ID ${partnerId} not found`);
+    }
+
+    const [totalCourses, activeCourses, totalStudents, totalRevenue] = await Promise.all([
+      this.prisma.course.count({
+        where: { partnerId },
+      }),
+      this.prisma.course.count({
+        where: { partnerId, isActive: true },
+      }),
+      this.prisma.courseEnrollment.aggregate({
+        where: {
+          course: { partnerId },
+        },
+        _count: {
+          userId: true,
+        },
+      }),
+      this.prisma.courseEnrollment.aggregate({
+        where: {
+          course: { partnerId },
+        },
+        _sum: {
+          amountPaid: true,
+        },
+      }),
+    ]);
+
+    return {
+      partnerId,
+      totalCourses,
+      activeCourses,
+      totalStudents: totalStudents._count.userId,
+      totalRevenue: totalRevenue._sum.amountPaid ? Number(totalRevenue._sum.amountPaid) : 0,
+      averageRating: Number(partner.rating),
+      totalReviews: partner.reviewCount,
+    };
+  }
+
+  /**
+   * Update partner rating based on course reviews
+   */
+  async updatePartnerRating(partnerId: number): Promise<EducationPartner> {
+    const partner = await this.prisma.educationPartner.findUnique({
+      where: { id: partnerId },
+    });
+
+    if (!partner) {
+      throw new NotFoundException(`Education partner with ID ${partnerId} not found`);
+    }
+
+    // Get all reviews for courses from this partner
+    const courseIds = await this.prisma.course.findMany({
+      where: { partnerId },
+      select: { id: true },
+    });
+
+    if (courseIds.length === 0) {
+      // No courses, keep rating as is
+      return partner;
+    }
+
+    const courseIdStrings = courseIds.map((c) => c.id);
+
+    // Get reviews for these courses
+    const reviews = await this.prisma.review.findMany({
+      where: {
+        reviewableType: 'course',
+        reviewableId: { in: courseIdStrings },
+      },
+    });
+
+    if (reviews.length === 0) {
+      return partner;
+    }
+
+    const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
+
+    return this.prisma.educationPartner.update({
+      where: { id: partnerId },
+      data: {
+        rating: new Prisma.Decimal(averageRating),
+        reviewCount: reviews.length,
+      },
+    });
+  }
+
+  /**
+   * Search education partners by name
+   */
+  async search(
+    query: string,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ data: (EducationPartner & { courseCount: number })[]; total: number; page: number; limit: number }> {
+    if (page < 1) page = 1;
+    if (limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
+
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.EducationPartnerWhereInput = {
+      OR: [
+        { name: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query, mode: 'insensitive' } },
+        { slug: { contains: query, mode: 'insensitive' } },
+      ],
+    };
+
+    const [partners, total] = await Promise.all([
+      this.prisma.educationPartner.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.educationPartner.count({ where }),
+    ]);
+
+    // Get course count for each partner
+    const partnersWithCounts = await Promise.all(
+      partners.map(async (partner) => {
+        const courseCount = await this.prisma.course.count({
+          where: { partnerId: partner.id },
+        });
+        return {
+          ...partner,
+          courseCount,
+        };
+      }),
+    );
+
+    return {
+      data: partnersWithCounts,
+      total,
+      page,
+      limit,
+    };
   }
 }
