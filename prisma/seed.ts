@@ -52,7 +52,7 @@ async function main() {
 
   // Seed Brands
   console.log('🏷️  Creating brands...');
-  const brands = [];
+  const brands: any[] = [];
   for (let i = 0; i < 15; i++) {
     const category = categories[Math.floor(Math.random() * categories.length)];
     const brand = await createBrand(category.id);
@@ -62,7 +62,7 @@ async function main() {
 
   // Seed Discounts
   console.log('💰 Creating discounts...');
-  const discounts = [];
+  const discounts: any[] = [];
   for (let i = 0; i < 25; i++) {
     const discount = await createDiscount();
     discounts.push(discount);
@@ -71,7 +71,7 @@ async function main() {
 
   // Seed Users (Students)
   console.log('👥 Creating users...');
-  const users = [];
+  const users: any[] = [];
   for (let i = 0; i < 30; i++) {
     const user = await createUser();
     users.push(user);
@@ -91,7 +91,7 @@ async function main() {
 
   // Seed Companies
   console.log('🏢 Creating companies...');
-  const companies = [];
+  const companies: any[] = [];
   for (let i = 0; i < 10; i++) {
     const company = await createCompany();
     companies.push(company);
@@ -100,7 +100,7 @@ async function main() {
 
   // Seed Jobs
   console.log('💼 Creating jobs...');
-  const jobs = [];
+  const jobs: any[] = [];
   for (let i = 0; i < 20; i++) {
     const job = await createJob();
     jobs.push(job);
@@ -109,7 +109,7 @@ async function main() {
 
   // Seed Events
   console.log('🎉 Creating events...');
-  const events = [];
+  const events: any[] = [];
   for (let i = 0; i < 15; i++) {
     const event = await createEvent();
     events.push(event);

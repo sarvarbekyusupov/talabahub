@@ -38,10 +38,10 @@ export class EmailConsumer {
   async handleVerificationEmail(job: Job) {
     this.logger.log(`Processing verification email job ${job.id}`);
     try {
-      await this.mailService.sendVerificationEmail(
+      await this.mailService.sendEmailVerification(
         job.data.email,
-        job.data.name,
         job.data.verificationUrl,
+        job.data.name,
       );
       this.logger.log(`Verification email sent to ${job.data.email}`);
       return { success: true };
@@ -58,10 +58,10 @@ export class EmailConsumer {
   async handlePasswordResetEmail(job: Job) {
     this.logger.log(`Processing password reset email job ${job.id}`);
     try {
-      await this.mailService.sendPasswordResetEmail(
+      await this.mailService.sendPasswordReset(
         job.data.email,
-        job.data.name,
         job.data.resetUrl,
+        job.data.name,
       );
       this.logger.log(`Password reset email sent to ${job.data.email}`);
       return { success: true };
@@ -103,7 +103,6 @@ export class EmailConsumer {
         job.data.email,
         job.data.studentName,
         job.data.courseName,
-        job.data.courseUrl,
       );
       this.logger.log(`Course enrollment email sent to ${job.data.email}`);
       return { success: true };

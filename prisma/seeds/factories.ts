@@ -27,7 +27,7 @@ const uzbekCities = [
 ];
 
 // Helper functions
-function randomElement<T>(array: T[]): T {
+function randomElement<T>(array: readonly T[] | T[]): T {
   return array[Math.floor(Math.random() * array.length)];
 }
 
@@ -47,13 +47,13 @@ export async function createUniversity(data?: Partial<any>) {
 
   return await prisma.university.create({
     data: {
-      name,
-      description: `Leading university in ${randomElement(uzbekCities)} offering quality education`,
+      nameUz: name,
+      nameEn: name,
       address: `${randomInt(1, 100)} ${randomElement(['Amir Temur', 'Navoi', 'Buyuk Ipak Yoli'])} Street`,
       city: data?.city || randomElement(uzbekCities),
-      country: 'Uzbekistan',
+      region: randomElement(uzbekCities),
       website: `https://${name.toLowerCase().replace(/\s+/g, '')}.uz`,
-      establishedYear: randomInt(1950, 2020),
+      logoUrl: `https://via.placeholder.com/200x200?text=University`,
       ...data,
     },
   });
@@ -88,10 +88,10 @@ export async function createUser(data?: Partial<any>) {
       dateOfBirth: new Date(randomInt(1995, 2005), randomInt(0, 11), randomInt(1, 28)),
       gender: randomElement(['male', 'female']),
       universityId: university.id,
-      studentId: `STU${randomInt(100000, 999999)}`,
-      enrollmentYear: randomInt(2018, 2024),
+      studentIdNumber: `STU${randomInt(100000, 999999)}`,
+      courseYear: randomInt(1, 4),
       graduationYear: randomInt(2022, 2028),
-      major: randomElement(['Computer Science', 'Engineering', 'Business', 'Medicine', 'Law']),
+      faculty: randomElement(['Computer Science', 'Engineering', 'Business', 'Medicine', 'Law']),
       verificationStatus: randomElement(['pending', 'verified', 'rejected']),
       role: 'student',
       ...data,
@@ -117,7 +117,8 @@ export async function createCategory(data?: Partial<any>) {
 
   return await prisma.category.create({
     data: {
-      name: category.name,
+      nameUz: category.name,
+      nameEn: category.name,
       slug: category.name.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and'),
       description: category.description,
       icon: category.icon,
@@ -130,7 +131,7 @@ export async function createCategory(data?: Partial<any>) {
 /**
  * Brand Factory
  */
-export async function createBrand(categoryId?: string, data?: Partial<any>) {
+export async function createBrand(categoryId?: number, data?: Partial<any>) {
   const brands = [
     'MaxWay', 'Evos', 'KFC', 'Burger King', 'Pizza Hut',
     'Artel', 'Samsung', 'Xiaomi', 'Nike', 'Adidas',
@@ -149,7 +150,7 @@ export async function createBrand(categoryId?: string, data?: Partial<any>) {
       name,
       slug: name.toLowerCase().replace(/\s+/g, '-'),
       description: `Leading brand offering quality products and services`,
-      logo: `https://via.placeholder.com/200x200?text=${name}`,
+      logoUrl: `https://via.placeholder.com/200x200?text=${name}`,
       website: `https://${name.toLowerCase()}.uz`,
       categoryId: category.id,
       isActive: true,
@@ -167,26 +168,24 @@ export async function createDiscount(data?: Partial<any>) {
     return brands.length > 0 ? randomElement(brands) : await createBrand();
   })();
 
-  const discountTypes = ['percentage', 'fixed_amount', 'buy_one_get_one'];
-  const type = randomElement(discountTypes);
+  const discountTypes = ['percentage', 'fixed_amount', 'promo_code'] as const;
+  const type = randomElement(discountTypes) as 'percentage' | 'fixed_amount' | 'promo_code';
 
-  const percentage = type === 'percentage' ? randomInt(10, 50) : null;
-  const fixedAmount = type === 'fixed_amount' ? randomInt(5000, 50000) : null;
+  const discountValue = type === 'percentage' ? randomInt(10, 50) : randomInt(5000, 50000);
 
   return await prisma.discount.create({
     data: {
-      title: `${percentage || fixedAmount || 'Special'} ${type === 'percentage' ? '%' : 'UZS'} off at ${brand.name}`,
+      title: `${discountValue} ${type === 'percentage' ? '%' : 'UZS'} off at ${brand.name}`,
       description: `Get amazing discounts on all products and services`,
       brandId: brand.id,
-      type: type,
-      percentage: percentage,
-      fixedAmount: fixedAmount,
+      discountType: type as any,
+      discountValue: discountValue,
       minPurchaseAmount: randomBoolean() ? randomInt(10000, 100000) : null,
       startDate: new Date(),
       endDate: new Date(Date.now() + randomInt(7, 90) * 24 * 60 * 60 * 1000),
       isActive: true,
-      maxUsageCount: randomBoolean() ? randomInt(100, 1000) : null,
-      usageCount: 0,
+      totalUsageLimit: randomBoolean() ? randomInt(100, 1000) : null,
+      universityIds: [],
       ...data,
     },
   });
@@ -208,14 +207,12 @@ export async function createCompany(data?: Partial<any>) {
       name,
       slug: name.toLowerCase().replace(/\s+/g, '-'),
       description: `Leading technology company in Uzbekistan`,
-      logo: `https://via.placeholder.com/200x200?text=${name}`,
+      logoUrl: `https://via.placeholder.com/200x200?text=${name}`,
       website: `https://${name.toLowerCase().replace(/\s+/g, '')}.uz`,
       industry: randomElement(['IT', 'Telecommunications', 'Software', 'Consulting']),
-      employeeCount: randomInt(10, 500),
+      companySize: randomElement(['10-50', '50-100', '100-500']),
       foundedYear: randomInt(2000, 2020),
       address: `${randomInt(1, 100)} ${randomElement(['Amir Temur', 'Navoi'])} Street, Tashkent`,
-      city: 'Tashkent',
-      country: 'Uzbekistan',
       isActive: true,
       ...data,
     },
@@ -242,15 +239,16 @@ export async function createJob(data?: Partial<any>) {
   return await prisma.job.create({
     data: {
       title,
-      slug: `${title.toLowerCase().replace(/\s+/g, '-')}-${randomInt(1000, 9999)}`,
       description: `We are looking for talented ${title} to join our team`,
       companyId: company.id,
       location: randomElement(uzbekCities),
-      jobType: randomElement(['full_time', 'part_time', 'internship', 'contract']),
-      experienceLevel: randomElement(['entry', 'mid', 'senior']),
+      jobType: randomElement(['full_time', 'part_time', 'internship', 'freelance']),
       salaryMin: randomInt(5000000, 15000000),
       salaryMax: randomInt(15000000, 50000000),
       applicationDeadline: new Date(Date.now() + randomInt(14, 60) * 24 * 60 * 60 * 1000),
+      requiredSkills: ['JavaScript', 'TypeScript'],
+      preferredSkills: ['React', 'Node.js'],
+      languages: ['English', 'Uzbek'],
       isActive: true,
       ...data,
     },
@@ -277,13 +275,11 @@ export async function createEvent(data?: Partial<any>) {
       startDate,
       endDate: new Date(startDate.getTime() + randomInt(2, 8) * 60 * 60 * 1000),
       location: `${randomElement(uzbekCities)} Conference Center`,
-      venue: `Hall ${randomInt(1, 5)}`,
-      maxAttendees: randomInt(50, 500),
-      currentAttendees: 0,
+      maxParticipants: randomInt(50, 500),
       isOnline: randomBoolean(0.3),
       meetingLink: randomBoolean(0.3) ? 'https://zoom.us/j/123456789' : null,
-      isPaid: randomBoolean(0.2),
-      price: randomBoolean(0.2) ? randomInt(50000, 500000) : null,
+      isFree: !randomBoolean(0.2),
+      ticketPrice: randomBoolean(0.2) ? randomInt(50000, 500000) : null,
       isActive: true,
       ...data,
     },

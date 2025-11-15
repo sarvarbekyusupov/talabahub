@@ -42,13 +42,11 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production && \
-    npm cache clean --force
-
-# Copy Prisma schema and generate client
+# Copy Prisma schema
 COPY --from=builder /app/prisma ./prisma
-RUN npx prisma generate
+
+# Copy node_modules from builder (already contains all dependencies and Prisma client)
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
 
 # Copy built application from builder
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
@@ -72,5 +70,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application
-CMD ["node", "dist/main"]
+# Start application with migrations
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
