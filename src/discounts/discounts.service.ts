@@ -21,7 +21,7 @@ export class DiscountsService {
 
     // Check if promo code is already in use (if provided)
     if (promoCode) {
-      const existingPromoCode = await this.prisma.discount.findUnique({
+      const existingPromoCode = await this.prisma.discount.findFirst({
         where: { promoCode },
       });
 
@@ -218,7 +218,7 @@ export class DiscountsService {
       updateDiscountDto.promoCode &&
       updateDiscountDto.promoCode !== discount.promoCode
     ) {
-      const existingPromoCode = await this.prisma.discount.findUnique({
+      const existingPromoCode = await this.prisma.discount.findFirst({
         where: { promoCode: updateDiscountDto.promoCode },
       });
 
@@ -227,9 +227,11 @@ export class DiscountsService {
       }
     }
 
+    const { categoryId, brandId, ...updateData } = updateDiscountDto;
+
     const updatedDiscount = await this.prisma.discount.update({
       where: { id },
-      data: updateDiscountDto,
+      data: updateData,
       include: {
         brand: {
           select: {

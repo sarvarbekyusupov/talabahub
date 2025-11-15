@@ -14,7 +14,7 @@ import {
   ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiBearerTokenAuth,
+  ApiBearerAuth,
   ApiQuery,
   ApiParam,
 } from '@nestjs/swagger';
@@ -36,7 +36,7 @@ export class EducationPartnersController {
    */
   @Post()
   @Roles('admin', 'partner')
-  @ApiBearerTokenAuth()
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new education partner' })
   @ApiResponse({
     status: 201,
@@ -276,7 +276,7 @@ export class EducationPartnersController {
    */
   @Patch(':id')
   @Roles('admin', 'partner')
-  @ApiBearerTokenAuth()
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an education partner' })
   @ApiParam({ name: 'id', type: Number, description: 'Partner ID' })
   @ApiResponse({
@@ -299,7 +299,7 @@ export class EducationPartnersController {
    */
   @Delete(':id')
   @Roles('admin')
-  @ApiBearerTokenAuth()
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an education partner (Admin only)' })
   @ApiParam({ name: 'id', type: Number, description: 'Partner ID' })
   @ApiResponse({

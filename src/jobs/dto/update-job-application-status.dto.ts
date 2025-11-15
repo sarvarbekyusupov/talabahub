@@ -14,7 +14,7 @@ export class UpdateJobApplicationStatusDto {
   })
   @IsString()
   @IsEnum(['pending', 'reviewed', 'interview', 'accepted', 'rejected'])
-  status: string;
+  status: 'pending' | 'reviewed' | 'interview' | 'accepted' | 'rejected';
 
   @ApiProperty({
     example: 'Great candidate, scheduling interview',

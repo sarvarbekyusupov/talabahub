@@ -66,7 +66,7 @@ export class CreateJobDto {
     description: 'Type of job',
   })
   @IsEnum(['internship', 'part_time', 'full_time', 'freelance'])
-  jobType: string;
+  jobType: 'internship' | 'part_time' | 'full_time' | 'freelance';
 
   @ApiProperty({
     example: 'San Francisco, CA',

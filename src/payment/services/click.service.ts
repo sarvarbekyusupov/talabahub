@@ -12,8 +12,8 @@ export class ClickService {
   private readonly secretKey: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.serviceId = this.configService.get('CLICK_SERVICE_ID');
-    this.secretKey = this.configService.get('CLICK_SECRET_KEY');
+    this.serviceId = this.configService.get<string>('CLICK_SERVICE_ID') || '';
+    this.secretKey = this.configService.get<string>('CLICK_SECRET_KEY') || '';
   }
 
   /**
@@ -154,10 +154,10 @@ export class ClickService {
     const baseUrl = 'https://my.click.uz/services/pay';
     const params = new URLSearchParams({
       service_id: this.serviceId,
-      merchant_id: this.configService.get('CLICK_MERCHANT_ID'),
+      merchant_id: this.configService.get<string>('CLICK_MERCHANT_ID') || '',
       amount: amount.toString(),
       transaction_param: orderId,
-      return_url: returnUrl || this.configService.get('FRONTEND_URL'),
+      return_url: returnUrl || this.configService.get<string>('FRONTEND_URL') || '',
     });
 
     return `${baseUrl}?${params.toString()}`;

@@ -166,9 +166,11 @@ export class JobsService {
       }
     }
 
+    const { companyId, ...updateData } = updateJobDto;
+
     const updatedJob = await this.prisma.job.update({
       where: { id },
-      data: updateJobDto,
+      data: updateData,
       include: {
         company: {
           select: {
@@ -392,7 +394,7 @@ export class JobsService {
 
   async updateApplicationStatus(
     applicationId: string,
-    status: string,
+    status: 'pending' | 'reviewed' | 'interview' | 'accepted' | 'rejected',
     statusNotes?: string,
     interviewDate?: Date,
     interviewLocation?: string,
