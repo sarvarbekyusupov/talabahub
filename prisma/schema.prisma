@@ -1,0 +1,701 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Enums
+// ============================================
+enum UserVerificationStatus {
+  pending
+  verified
+  rejected
+
+  @@map("user_verification_status")
+}
+
+enum UserRole {
+  student
+  admin
+  partner
+
+  @@map("user_role")
+}
+
+enum DiscountType {
+  percentage
+  fixed_amount
+  promo_code
+
+  @@map("discount_type")
+}
+
+enum JobType {
+  internship
+  part_time
+  full_time
+  freelance
+
+  @@map("job_type")
+}
+
+enum JobApplicationStatus {
+  pending
+  reviewed
+  interview
+  accepted
+  rejected
+
+  @@map("job_application_status")
+}
+
+enum CourseLevel {
+  beginner
+  intermediate
+  advanced
+
+  @@map("course_level")
+}
+
+enum NotificationType {
+  email
+  sms
+  push
+  in_app
+
+  @@map("notification_type")
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+  read
+
+  @@map("notification_status")
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+
+  @@map("payment_status")
+}
+
+// ============================================
+// Models
+// ============================================
+
+model University {
+  id           Int       @id @default(autoincrement())
+  nameUz       String    @map("name_uz") @db.VarChar(255)
+  nameEn       String?   @map("name_en") @db.VarChar(255)
+  nameRu       String?   @map("name_ru") @db.VarChar(255)
+  emailDomain  String?   @unique @map("email_domain") @db.VarChar(100)
+  logoUrl      String?   @map("logo_url") @db.VarChar(500)
+  website      String?   @db.VarChar(255)
+  address      String?   @db.Text
+  city         String?   @db.VarChar(100)
+  region       String?   @db.VarChar(100)
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  users        User[]
+
+  @@map("universities")
+}
+
+model User {
+  id                      String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email                   String                   @unique @db.VarChar(255)
+  phone                   String?                  @unique @db.VarChar(20)
+  passwordHash            String                   @map("password_hash") @db.VarChar(255)
+  firstName               String                   @map("first_name") @db.VarChar(100)
+  lastName                String                   @map("last_name") @db.VarChar(100)
+  middleName              String?                  @map("middle_name") @db.VarChar(100)
+  dateOfBirth             DateTime?                @map("date_of_birth") @db.Date
+  gender                  String?                  @db.VarChar(10)
+  avatarUrl               String?                  @map("avatar_url") @db.VarChar(500)
+  universityId            Int?                     @map("university_id")
+  studentIdNumber         String?                  @map("student_id_number") @db.VarChar(50)
+  studentIdPhoto          String?                  @map("student_id_photo") @db.VarChar(500)
+  faculty                 String?                  @db.VarChar(255)
+  courseYear              Int?                     @map("course_year")
+  graduationYear          Int?                     @map("graduation_year")
+  verificationStatus      UserVerificationStatus   @default(pending) @map("verification_status")
+  verificationDate        DateTime?                @map("verification_date")
+  verificationNotes       String?                  @map("verification_notes") @db.Text
+  role                    UserRole                 @default(student)
+  isActive                Boolean                  @default(true) @map("is_active")
+  isEmailVerified         Boolean                  @default(false) @map("is_email_verified")
+  emailVerificationToken  String?                  @map("email_verification_token") @db.VarChar(255)
+  passwordResetToken      String?                  @map("password_reset_token") @db.VarChar(255)
+  passwordResetExpires    DateTime?                @map("password_reset_expires")
+  preferredLanguage       String                   @default("uz") @map("preferred_language") @db.VarChar(10)
+  notificationPreferences Json                     @default("{\"email\": true, \"sms\": false, \"push\": true}") @map("notification_preferences")
+  totalDiscountsUsed      Int                      @default(0) @map("total_discounts_used")
+  totalSavings            Decimal                  @default(0) @map("total_savings") @db.Decimal(10, 2)
+  referralCode            String?                  @unique @map("referral_code") @db.VarChar(20)
+  referredBy              String?                  @map("referred_by") @db.Uuid
+  lastLoginAt             DateTime?                @map("last_login_at")
+  createdAt               DateTime                 @default(now()) @map("created_at")
+  updatedAt               DateTime                 @updatedAt @map("updated_at")
+  deletedAt               DateTime?                @map("deleted_at")
+
+  university              University?              @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  referrer                User?                    @relation("UserReferrals", fields: [referredBy], references: [id], onDelete: SetNull)
+  referrals               User[]                   @relation("UserReferrals")
+  discountUsages          DiscountUsage[]
+  jobApplications         JobApplication[]
+  courseEnrollments       CourseEnrollment[]
+  reviews                 Review[]
+  blogPosts               BlogPost[]
+  events                  Event[]
+  eventRegistrations      EventRegistration[]
+  notifications           Notification[]
+  transactions            Transaction[]
+  analyticsEvents         AnalyticsEvent[]
+  savedItems              SavedItem[]
+  adminLogs               AdminLog[]
+  subscriptions           Subscription[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([universityId])
+  @@index([verificationStatus])
+  @@index([referralCode])
+  @@map("users")
+}
+
+model Category {
+  id          Int        @id @default(autoincrement())
+  nameUz      String     @map("name_uz") @db.VarChar(100)
+  nameEn      String?    @map("name_en") @db.VarChar(100)
+  nameRu      String?    @map("name_ru") @db.VarChar(100)
+  slug        String     @unique @db.VarChar(100)
+  icon        String?    @db.VarChar(100)
+  description String?    @db.Text
+  parentId    Int?       @map("parent_id")
+  sortOrder   Int        @default(0) @map("sort_order")
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Category[] @relation("CategoryHierarchy")
+  brands      Brand[]
+  discounts   Discount[]
+  courses     Course[]
+  blogPosts   BlogPost[]
+
+  @@index([slug])
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Brand {
+  id             Int        @id @default(autoincrement())
+  name           String     @db.VarChar(255)
+  slug           String     @unique @db.VarChar(255)
+  logoUrl        String?    @map("logo_url") @db.VarChar(500)
+  bannerUrl      String?    @map("banner_url") @db.VarChar(500)
+  description    String?    @db.Text
+  website        String?    @db.VarChar(255)
+  contactEmail   String?    @map("contact_email") @db.VarChar(255)
+  contactPhone   String?    @map("contact_phone") @db.VarChar(20)
+  socialMedia    Json?      @map("social_media")
+  categoryId     Int?       @map("category_id")
+  commissionRate Decimal    @default(5.00) @map("commission_rate") @db.Decimal(5, 2)
+  totalDiscounts Int        @default(0) @map("total_discounts")
+  totalSales     Int        @default(0) @map("total_sales")
+  rating         Decimal    @default(0.00) @db.Decimal(3, 2)
+  reviewCount    Int        @default(0) @map("review_count")
+  isActive       Boolean    @default(true) @map("is_active")
+  isFeatured     Boolean    @default(false) @map("is_featured")
+  featuredUntil  DateTime?  @map("featured_until")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  category       Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  discounts      Discount[]
+
+  @@index([slug])
+  @@index([categoryId])
+  @@map("brands")
+}
+
+model Discount {
+  id                  String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brandId             Int            @map("brand_id")
+  categoryId          Int?           @map("category_id")
+  title               String         @db.VarChar(255)
+  description         String?        @db.Text
+  termsAndConditions  String?        @map("terms_and_conditions") @db.Text
+  howToUse            String?        @map("how_to_use") @db.Text
+  imageUrl            String?        @map("image_url") @db.VarChar(500)
+  discountType        DiscountType   @map("discount_type")
+  discountValue       Decimal        @map("discount_value") @db.Decimal(10, 2)
+  minPurchaseAmount   Decimal?       @map("min_purchase_amount") @db.Decimal(10, 2)
+  maxDiscountAmount   Decimal?       @map("max_discount_amount") @db.Decimal(10, 2)
+  promoCode           String?        @map("promo_code") @db.VarChar(50)
+  startDate           DateTime       @map("start_date")
+  endDate             DateTime       @map("end_date")
+  usageLimitPerUser   Int            @default(1) @map("usage_limit_per_user")
+  totalUsageLimit     Int?           @map("total_usage_limit")
+  currentUsageCount   Int            @default(0) @map("current_usage_count")
+  universityIds       Int[]          @map("university_ids")
+  minCourseYear       Int?           @map("min_course_year")
+  isActive            Boolean        @default(true) @map("is_active")
+  isFeatured          Boolean        @default(false) @map("is_featured")
+  isExclusive         Boolean        @default(false) @map("is_exclusive")
+  viewCount           Int            @default(0) @map("view_count")
+  clickCount          Int            @default(0) @map("click_count")
+  conversionRate      Decimal        @default(0.00) @map("conversion_rate") @db.Decimal(5, 2)
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  brand               Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category            Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  usages              DiscountUsage[]
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([startDate, endDate])
+  @@index([promoCode])
+  @@map("discounts")
+}
+
+model DiscountUsage {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  discountId        String    @map("discount_id") @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  transactionAmount Decimal?  @map("transaction_amount") @db.Decimal(10, 2)
+  discountAmount    Decimal?  @map("discount_amount") @db.Decimal(10, 2)
+  commissionEarned  Decimal?  @map("commission_earned") @db.Decimal(10, 2)
+  ipAddress         String?   @map("ip_address") @db.Inet
+  userAgent         String?   @map("user_agent") @db.Text
+  deviceType        String?   @map("device_type") @db.VarChar(50)
+  isVerified        Boolean   @default(false) @map("is_verified")
+  verifiedAt        DateTime? @map("verified_at")
+  usedAt            DateTime  @default(now()) @map("used_at")
+
+  discount          Discount  @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([discountId])
+  @@index([userId])
+  @@map("discount_usages")
+}
+
+model Company {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(255)
+  slug        String    @unique @db.VarChar(255)
+  logoUrl     String?   @map("logo_url") @db.VarChar(500)
+  bannerUrl   String?   @map("banner_url") @db.VarChar(500)
+  description String?   @db.Text
+  website     String?   @db.VarChar(255)
+  email       String?   @db.VarChar(255)
+  phone       String?   @db.VarChar(20)
+  address     String?   @db.Text
+  industry    String?   @db.VarChar(100)
+  companySize String?   @map("company_size") @db.VarChar(50)
+  foundedYear Int?      @map("founded_year")
+  totalJobs   Int       @default(0) @map("total_jobs")
+  totalHires  Int       @default(0) @map("total_hires")
+  rating      Decimal   @default(0.00) @db.Decimal(3, 2)
+  isActive    Boolean   @default(true) @map("is_active")
+  isVerified  Boolean   @default(false) @map("is_verified")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  jobs        Job[]
+
+  @@index([slug])
+  @@map("companies")
+}
+
+model Job {
+  id                   String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId            Int              @map("company_id")
+  title                String           @db.VarChar(255)
+  description          String           @db.Text
+  requirements         String?          @db.Text
+  responsibilities     String?          @db.Text
+  benefits             String?          @db.Text
+  jobType              JobType          @map("job_type")
+  location             String?          @db.VarChar(255)
+  isRemote             Boolean          @default(false) @map("is_remote")
+  salaryMin            Decimal?         @map("salary_min") @db.Decimal(10, 2)
+  salaryMax            Decimal?         @map("salary_max") @db.Decimal(10, 2)
+  salaryCurrency       String           @default("UZS") @map("salary_currency") @db.VarChar(10)
+  isPaid               Boolean          @default(true) @map("is_paid")
+  minCourseYear        Int?             @map("min_course_year")
+  requiredSkills       String[]         @map("required_skills")
+  preferredSkills      String[]         @map("preferred_skills")
+  languages            String[]
+  applicationDeadline  DateTime?        @map("application_deadline")
+  totalPositions       Int              @default(1) @map("total_positions")
+  applicationCount     Int              @default(0) @map("application_count")
+  isActive             Boolean          @default(true) @map("is_active")
+  isFeatured           Boolean          @default(false) @map("is_featured")
+  viewCount            Int              @default(0) @map("view_count")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  closedAt             DateTime?        @map("closed_at")
+
+  company              Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  applications         JobApplication[]
+
+  @@index([companyId])
+  @@index([jobType])
+  @@index([applicationDeadline])
+  @@map("jobs")
+}
+
+model JobApplication {
+  id              String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  jobId           String               @map("job_id") @db.Uuid
+  userId          String               @map("user_id") @db.Uuid
+  cvUrl           String?              @map("cv_url") @db.VarChar(500)
+  coverLetter     String?              @map("cover_letter") @db.Text
+  portfolioUrl    String?              @map("portfolio_url") @db.VarChar(500)
+  expectedSalary  Decimal?             @map("expected_salary") @db.Decimal(10, 2)
+  status          JobApplicationStatus @default(pending)
+  statusUpdatedAt DateTime?            @map("status_updated_at")
+  statusNotes     String?              @map("status_notes") @db.Text
+  interviewDate   DateTime?            @map("interview_date")
+  interviewLocation String?            @map("interview_location") @db.Text
+  interviewNotes  String?              @map("interview_notes") @db.Text
+  appliedAt       DateTime             @default(now()) @map("applied_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  job             Job                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, userId])
+  @@index([jobId])
+  @@index([userId])
+  @@map("job_applications")
+}
+
+model EducationPartner {
+  id             Int       @id @default(autoincrement())
+  name           String    @db.VarChar(255)
+  slug           String    @unique @db.VarChar(255)
+  logoUrl        String?   @map("logo_url") @db.VarChar(500)
+  bannerUrl      String?   @map("banner_url") @db.VarChar(500)
+  description    String?   @db.Text
+  website        String?   @db.VarChar(255)
+  email          String?   @db.VarChar(255)
+  phone          String?   @db.VarChar(20)
+  address        String?   @db.Text
+  socialMedia    Json?     @map("social_media")
+  totalCourses   Int       @default(0) @map("total_courses")
+  totalStudents  Int       @default(0) @map("total_students")
+  rating         Decimal   @default(0.00) @db.Decimal(3, 2)
+  reviewCount    Int       @default(0) @map("review_count")
+  commissionRate Decimal   @default(10.00) @map("commission_rate") @db.Decimal(5, 2)
+  isActive       Boolean   @default(true) @map("is_active")
+  isVerified     Boolean   @default(false) @map("is_verified")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  courses        Course[]
+
+  @@map("education_partners")
+}
+
+model Course {
+  id                 String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  partnerId          Int                @map("partner_id")
+  categoryId         Int?               @map("category_id")
+  title              String             @db.VarChar(255)
+  slug               String             @unique @db.VarChar(255)
+  description        String?            @db.Text
+  syllabus           String?            @db.Text
+  learningOutcomes   String[]           @map("learning_outcomes")
+  thumbnailUrl       String?            @map("thumbnail_url") @db.VarChar(500)
+  promoVideoUrl      String?            @map("promo_video_url") @db.VarChar(500)
+  level              CourseLevel
+  durationHours      Int?               @map("duration_hours")
+  durationWeeks      Int?               @map("duration_weeks")
+  language           String             @default("uz") @db.VarChar(50)
+  originalPrice      Decimal            @map("original_price") @db.Decimal(10, 2)
+  discountPrice      Decimal?           @map("discount_price") @db.Decimal(10, 2)
+  discountPercentage Int?               @map("discount_percentage")
+  currency           String             @default("UZS") @db.VarChar(10)
+  prerequisites      String[]
+  targetAudience     String[]           @map("target_audience")
+  startDate          DateTime?          @map("start_date") @db.Date
+  endDate            DateTime?          @map("end_date") @db.Date
+  scheduleInfo       String?            @map("schedule_info") @db.Text
+  enrollmentCount    Int                @default(0) @map("enrollment_count")
+  completionRate     Decimal            @default(0.00) @map("completion_rate") @db.Decimal(5, 2)
+  rating             Decimal            @default(0.00) @db.Decimal(3, 2)
+  reviewCount        Int                @default(0) @map("review_count")
+  isActive           Boolean            @default(true) @map("is_active")
+  isFeatured         Boolean            @default(false) @map("is_featured")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  partner            EducationPartner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  category           Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  enrollments        CourseEnrollment[]
+
+  @@index([partnerId])
+  @@index([slug])
+  @@map("courses")
+}
+
+model CourseEnrollment {
+  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  courseId         String    @map("course_id") @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  amountPaid       Decimal   @map("amount_paid") @db.Decimal(10, 2)
+  commissionEarned Decimal?  @map("commission_earned") @db.Decimal(10, 2)
+  paymentMethod    String?   @map("payment_method") @db.VarChar(50)
+  transactionId    String?   @map("transaction_id") @db.VarChar(255)
+  progressPercentage Int     @default(0) @map("progress_percentage")
+  completedAt      DateTime? @map("completed_at")
+  certificateUrl   String?   @map("certificate_url") @db.VarChar(500)
+  status           String    @default("active") @db.VarChar(50)
+  enrolledAt       DateTime  @default(now()) @map("enrolled_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  course           Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([courseId])
+  @@index([userId])
+  @@map("course_enrollments")
+}
+
+model Review {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  reviewableType  String    @map("reviewable_type") @db.VarChar(50)
+  reviewableId    String    @map("reviewable_id") @db.VarChar(255)
+  rating          Int       @db.Integer
+  title           String?   @db.VarChar(255)
+  comment         String?   @db.Text
+  pros            String?   @db.Text
+  cons            String?   @db.Text
+  isVerified      Boolean   @default(false) @map("is_verified")
+  isAnonymous     Boolean   @default(false) @map("is_anonymous")
+  isApproved      Boolean   @default(true) @map("is_approved")
+  moderationNotes String?   @map("moderation_notes") @db.Text
+  helpfulCount    Int       @default(0) @map("helpful_count")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reviewableType, reviewableId])
+  @@index([userId])
+  @@index([reviewableType, reviewableId])
+  @@map("reviews")
+}
+
+model BlogPost {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  authorId        String?   @map("author_id") @db.Uuid
+  categoryId      Int?      @map("category_id")
+  title           String    @db.VarChar(255)
+  slug            String    @unique @db.VarChar(255)
+  excerpt         String?   @db.Text
+  content         String    @db.Text
+  featuredImage   String?   @map("featured_image") @db.VarChar(500)
+  metaTitle       String?   @map("meta_title") @db.VarChar(255)
+  metaDescription String?   @map("meta_description") @db.Text
+  metaKeywords    String[]  @map("meta_keywords")
+  viewCount       Int       @default(0) @map("view_count")
+  readTimeMinutes Int?      @map("read_time_minutes")
+  status          String    @default("draft") @db.VarChar(20)
+  publishedAt     DateTime? @map("published_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  author          User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([slug])
+  @@map("blog_posts")
+}
+
+model Event {
+  id                   String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organizerId          String?             @map("organizer_id") @db.Uuid
+  title                String              @db.VarChar(255)
+  slug                 String              @unique @db.VarChar(255)
+  description          String?             @db.Text
+  coverImage           String?             @map("cover_image") @db.VarChar(500)
+  eventType            String?             @map("event_type") @db.VarChar(50)
+  location             String?             @db.Text
+  isOnline             Boolean             @default(false) @map("is_online")
+  meetingLink          String?             @map("meeting_link") @db.VarChar(500)
+  startDate            DateTime            @map("start_date")
+  endDate              DateTime            @map("end_date")
+  registrationDeadline DateTime?           @map("registration_deadline")
+  maxParticipants      Int?                @map("max_participants")
+  currentParticipants  Int                 @default(0) @map("current_participants")
+  isFree               Boolean             @default(true) @map("is_free")
+  ticketPrice          Decimal?            @map("ticket_price") @db.Decimal(10, 2)
+  isActive             Boolean             @default(true) @map("is_active")
+  status               String              @default("upcoming") @db.VarChar(20)
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  organizer            User?               @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  registrations        EventRegistration[]
+
+  @@index([slug])
+  @@index([startDate, endDate])
+  @@map("events")
+}
+
+model EventRegistration {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId       String    @map("event_id") @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  status        String    @default("registered") @db.VarChar(20)
+  attendedAt    DateTime? @map("attended_at")
+  amountPaid    Decimal?  @map("amount_paid") @db.Decimal(10, 2)
+  paymentMethod String?   @map("payment_method") @db.VarChar(50)
+  registeredAt  DateTime  @default(now()) @map("registered_at")
+
+  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_registrations")
+}
+
+model Notification {
+  id          String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId      String             @map("user_id") @db.Uuid
+  type        NotificationType
+  title       String             @db.VarChar(255)
+  message     String             @db.Text
+  data        Json?
+  status      NotificationStatus @default(pending)
+  sentAt      DateTime?          @map("sent_at")
+  readAt      DateTime?          @map("read_at")
+  actionUrl   String?            @map("action_url") @db.VarChar(500)
+  actionLabel String?            @map("action_label") @db.VarChar(100)
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model Transaction {
+  id                    String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId                String?       @map("user_id") @db.Uuid
+  type                  String        @db.VarChar(50)
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String        @default("UZS") @db.VarChar(10)
+  referenceType         String?       @map("reference_type") @db.VarChar(50)
+  referenceId           String?       @map("reference_id") @db.VarChar(255)
+  paymentMethod         String?       @map("payment_method") @db.VarChar(50)
+  paymentProvider       String?       @map("payment_provider") @db.VarChar(50)
+  externalTransactionId String?       @map("external_transaction_id") @db.VarChar(255)
+  status                PaymentStatus @default(pending)
+  completedAt           DateTime?     @map("completed_at")
+  failedReason          String?       @map("failed_reason") @db.Text
+  metadata              Json?
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  user                  User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([referenceType, referenceId])
+  @@map("transactions")
+}
+
+model AnalyticsEvent {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId        String?   @map("user_id") @db.Uuid
+  eventName     String    @map("event_name") @db.VarChar(100)
+  eventCategory String?   @map("event_category") @db.VarChar(50)
+  eventLabel    String?   @map("event_label") @db.VarChar(255)
+  eventValue    Decimal?  @map("event_value") @db.Decimal(10, 2)
+  pageUrl       String?   @map("page_url") @db.Text
+  referrer      String?   @db.Text
+  ipAddress     String?   @map("ip_address") @db.Inet
+  userAgent     String?   @map("user_agent") @db.Text
+  deviceType    String?   @map("device_type") @db.VarChar(50)
+  browser       String?   @db.VarChar(50)
+  os            String?   @db.VarChar(50)
+  metadata      Json?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([eventName])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
+
+model SavedItem {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  saveableType String   @map("saveable_type") @db.VarChar(50)
+  saveableId   String   @map("saveable_id") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, saveableType, saveableId])
+  @@index([userId])
+  @@map("saved_items")
+}
+
+model AdminLog {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  adminId      String    @map("admin_id") @db.Uuid
+  action       String    @db.VarChar(100)
+  resourceType String    @map("resource_type") @db.VarChar(50)
+  resourceId   String?   @map("resource_id") @db.VarChar(255)
+  oldValues    Json?     @map("old_values")
+  newValues    Json?     @map("new_values")
+  ipAddress    String?   @map("ip_address") @db.Inet
+  userAgent    String?   @map("user_agent") @db.Text
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  admin        User      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@map("admin_logs")
+}
+
+model Subscription {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  planName           String    @map("plan_name") @db.VarChar(50)
+  price              Decimal   @db.Decimal(10, 2)
+  startDate          DateTime  @map("start_date")
+  endDate            DateTime  @map("end_date")
+  status             String    @default("active") @db.VarChar(20)
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancellationReason String?   @map("cancellation_reason") @db.Text
+  autoRenew          Boolean   @default(true) @map("auto_renew")
+  nextBillingDate    DateTime? @map("next_billing_date")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
