@@ -150,6 +150,150 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Exportable JSON specification at /api-json
   - Compatible with Postman, Insomnia, and other tools
 
+#### Database Seeding System
+- **Factory Functions** - Realistic test data generation with Uzbek localization
+  - Factory functions for all major entities (Universities, Users, Brands, Discounts, Companies, Jobs, Events)
+  - Authentic Uzbek data (names, cities, phone numbers)
+  - Configurable data generation with override options
+  - Relationship-aware data creation
+- **Seed Script** - Complete database population script
+  - Seeds 5 universities with realistic details
+  - Creates 30 student accounts + 1 admin account
+  - Generates 7 categories, 15 brands, 25 discounts
+  - Populates 10 companies, 20 job postings, 15 events
+  - Automatic cleanup before seeding
+  - Progress logging for transparency
+- **NPM Scripts** - Easy-to-use seeding commands
+  - `npm run db:seed` - Run seed script
+  - `npm run db:reset` - Reset database and reseed
+  - Integrated with Prisma seed configuration
+- **Default Admin Account**
+  - Email: admin@talabahub.com
+  - Password: Admin123!
+  - Full admin privileges for testing
+- **Test Student Accounts**
+  - All use password: Password123!
+  - Email format: {firstname}.{lastname}@student.uz
+  - Affiliated with different universities
+  - Verified and unverified students for testing
+
+#### Custom Validation Decorators
+- **Uzbekistan-Specific Validators** - 11 custom validation decorators
+  - `@IsUzbekPhone()` - Validates +998XXXXXXXXX format
+  - `@IsStrongPassword()` - Enforces password complexity (8+ chars, uppercase, lowercase, number, special char)
+  - `@IsStudentId()` - Validates SXXXXXXXX student ID format
+  - `@IsFutureDate()` - Ensures date is in the future (for events, deadlines)
+  - `@IsPastDate()` - Ensures date is in the past (for birth dates)
+  - `@IsAgeInRange(min, max)` - Validates age calculated from birth date
+  - `@IsUzbekPostalCode()` - Validates 6-digit Uzbek postal codes
+  - `@IsValidUrl()` - Validates HTTP/HTTPS URLs
+  - `@IsFileSize(maxBytes)` - Validates file size limits
+  - `@IsUzbekName()` - Validates Uzbek names (letters, spaces, hyphens, apostrophes)
+- **Custom Error Messages** - Descriptive validation error messages
+  - Clear, user-friendly error descriptions
+  - Configurable per-validator messages
+  - Integration with class-validator ecosystem
+- **DTO Integration** - Easy integration with existing DTOs
+  - Works alongside standard class-validator decorators
+  - Supports all class-transformer features
+  - Automatic validation in NestJS pipes
+
+#### Audit Logging System
+- **Audit Log Database** - Dedicated audit_logs table with raw SQL
+  - Tracks all CRUD operations (CREATE, UPDATE, DELETE, LOGIN, LOGOUT, READ)
+  - Stores user context (ID, email, role)
+  - Records request metadata (IP address, user agent)
+  - Captures before/after data for updates
+  - Timestamp for all events
+  - Uses raw SQL to avoid circular dependencies with Prisma
+- **AuditService** - Comprehensive audit logging service
+  - `logCreate()` - Log entity creation
+  - `logUpdate()` - Log entity updates with change tracking
+  - `logDelete()` - Log entity deletion
+  - `log()` - Generic logging for custom events
+  - `getEntityAuditLog()` - Get audit trail for specific entity
+  - `getUserAuditLog()` - Get all actions by specific user
+  - `getAuditLogs()` - Paginated logs with filtering
+  - Automatic change detection (before/after diff)
+  - Sanitizes sensitive data from logs
+- **Audit Decorator** - Automatic audit logging for controllers
+  - `@AuditLog(action, entityType)` - Auto-logs controller actions
+  - Extracts user context from JWT
+  - Captures request IP and user agent
+  - Zero-overhead decorator application
+- **Audit Controller** - Admin-only audit log viewing
+  - GET /api/audit - All logs with pagination and filters
+  - GET /api/audit/entity - Logs for specific entity
+  - GET /api/audit/user - Logs for specific user
+  - GET /api/audit/action - Logs by action type
+  - Filter by date range, action type, entity type
+  - Sort by timestamp
+  - Requires admin role
+- **Global Module** - Available throughout application
+  - @Global() decorator for app-wide access
+  - No need to import in every module
+  - Singleton service instance
+- **Security & Compliance** - Enterprise-grade audit trail
+  - Immutable log records (append-only)
+  - Comprehensive user attribution
+  - Full data change history
+  - Meets compliance requirements (GDPR, SOC 2)
+  - Forensic analysis capabilities
+
+#### Full-Text Search System
+- **PostgreSQL Full-Text Search** - Native database search with ranking
+  - Uses PostgreSQL ts_vector and ts_rank for relevance scoring
+  - Multi-field search (title, description, name)
+  - Results ordered by relevance rank
+  - Fast search with GIN indexes
+  - Query sanitization to prevent SQL injection
+- **Multi-Entity Search** - Search across all major entities
+  - Discounts search (with brand and category filtering)
+  - Jobs search (with company and job type filtering)
+  - Events search (with event type and date filtering)
+  - Brands search (with category filtering)
+  - Companies search (with industry filtering)
+  - Courses search (with partner and price filtering)
+- **Global Search** - Single endpoint for searching all entities
+  - Returns results from all entity types
+  - Configurable result limits per entity
+  - Aggregated total counts
+  - Useful for unified search interfaces
+- **Search Suggestions** - Autocomplete functionality
+  - Returns top matching titles for autocomplete
+  - Low-latency suggestions (< 50ms)
+  - Configurable suggestion count
+  - Supports frontend typeahead features
+- **Advanced Filtering** - Entity-specific filter options
+  - Discounts: category, minimum discount percentage
+  - Jobs: company, job type (full_time, part_time, internship, contract)
+  - Events: event type, start date range
+  - Brands: category
+  - Courses: partner, price range
+- **Pagination Support** - All search endpoints support pagination
+  - Consistent with global PaginationDto
+  - Default 20 results per page
+  - Total count and page metadata
+- **SearchService** - Centralized search logic
+  - `globalSearch()` - Search all entities at once
+  - `searchDiscounts()`, `searchJobs()`, `searchEvents()`, etc.
+  - `getSearchSuggestions()` - Autocomplete suggestions
+  - Reusable across modules
+- **SearchController** - RESTful search API
+  - GET /api/search - Global search
+  - GET /api/search/discounts - Search discounts
+  - GET /api/search/jobs - Search jobs
+  - GET /api/search/events - Search events
+  - GET /api/search/brands - Search brands
+  - GET /api/search/companies - Search companies
+  - GET /api/search/courses - Search courses
+  - GET /api/search/suggestions - Autocomplete
+- **Performance Optimized** - Fast search even with large datasets
+  - Uses database indexes for speed
+  - Limits result sets to prevent memory issues
+  - Efficient SQL queries with LEFT JOINs
+  - Returns only necessary fields
+
 ### Documentation
 - Added OPTIMIZATION_GUIDE.md with complete optimization documentation (840+ lines)
 - Added DEPLOYMENT.md with comprehensive deployment guide (573 lines)
@@ -161,6 +305,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Custom decorator usage examples
   - Error response documentation
   - Tips & tricks for using the API
+- Added FEATURES_GUIDE.md with comprehensive feature documentation (1000+ lines)
+  - Database seeding system with factory functions
+  - Custom validation decorators with examples
+  - Audit logging system with API endpoints
+  - Full-text search with multi-entity support
+  - Complete usage examples for all features
+  - Best practices and performance tips
 - Updated docs/README.md with optimization references
 - Added 9 performance optimizations and 4 security improvements
 - Updated version to 2.0.0 in OPTIMIZATION_GUIDE.md
@@ -179,6 +330,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `src/common/decorators/swagger.decorator.ts` - Custom Swagger decorators
 - `src/common/dto/pagination.dto.ts` - Enhanced with Swagger examples
 - `docs/API_DOCUMENTATION.md` - Complete API documentation guide
+- `prisma/seeds/factories.ts` - Factory functions for seed data generation
+- `prisma/seed.ts` - Database seeding script
+- `prisma/migrations/add_audit_log/migration.sql` - Audit logs table migration
+- `src/common/validators/custom-validators.ts` - Custom validation decorators
+- `src/common/decorators/audit.decorator.ts` - Audit logging decorator
+- `src/audit/` - Audit logging module (service, controller, module)
+- `src/search/` - Full-text search module (service, controller, module)
+- `docs/FEATURES_GUIDE.md` - Comprehensive features documentation
 
 ### Dependencies Added
 - `compression` - API response compression
