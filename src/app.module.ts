@@ -17,6 +17,8 @@ import { CoursesModule } from './courses/courses.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { BlogPostsModule } from './blog-posts/blog-posts.module';
 import { EventsModule } from './events/events.module';
+import { LoggerModule } from './logger/logger.module';
+import { HealthModule } from './health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -39,6 +41,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     ReviewsModule,
     BlogPostsModule,
     EventsModule,
+    LoggerModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [
