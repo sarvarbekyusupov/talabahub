@@ -107,10 +107,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Database connection pooling configuration
   - Monitoring and error tracking options
 
+#### API Documentation (Swagger/OpenAPI)
+- **Enhanced Swagger UI** - Professional, feature-rich API documentation
+  - Custom dark blue theme with improved readability
+  - Monokai syntax highlighting for code examples
+  - Search and filter functionality for quick endpoint discovery
+  - Request duration display
+  - Persistent authentication across sessions
+  - Collapsed sections by default for cleaner view
+  - Alphabetically sorted tags and operations
+- **Comprehensive API Information**
+  - Rich markdown description with features overview
+  - Getting started guide with authentication flow
+  - Contact information and support links
+  - MIT license information
+  - Multiple server configurations (local, staging, production)
+  - Rate limiting information (10 req/min default)
+- **Enhanced Tag Organization**
+  - 16 tagged endpoint groups with descriptions
+  - Authentication, Users, Universities, Categories, Brands
+  - Discounts, Companies, Jobs, Education Partners
+  - Courses, Blog Posts, Events, Reviews
+  - Upload, Payment, Health monitoring
+- **Custom Swagger Decorators** - Reusable documentation helpers
+  - ApiResponseSuccess, ApiResponseCreated, ApiResponseNoContent
+  - ApiResponseBadRequest, ApiResponseUnauthorized, ApiResponseForbidden
+  - ApiResponseNotFound, ApiResponseConflict, ApiResponseTooManyRequests
+  - ApiPaginatedResponse for consistent pagination documentation
+  - ApiCrudOperation for auto-generating CRUD endpoint docs
+  - ApiFileUpload for file upload endpoints
+- **DTO Examples** - All DTOs enhanced with examples
+  - PaginationDto with example values (page: 1, limit: 20)
+  - PaginationMeta with complete metadata examples
+  - Improved ApiProperty decorators across all DTOs
+- **Error Response Standards**
+  - Documented all HTTP status codes (400, 401, 403, 404, 409, 429, 500)
+  - Consistent error response format
+  - Real-world error examples for each status
+- **OpenAPI Specification**
+  - Version 2.0.0
+  - Full OpenAPI 3.0 compliance
+  - Exportable JSON specification at /api-json
+  - Compatible with Postman, Insomnia, and other tools
+
 ### Documentation
 - Added OPTIMIZATION_GUIDE.md with complete optimization documentation (840+ lines)
-- Added DEPLOYMENT.md with comprehensive deployment guide
-- Added DOCKER.md with Docker quick start and best practices
+- Added DEPLOYMENT.md with comprehensive deployment guide (573 lines)
+- Added DOCKER.md with Docker quick start and best practices (420 lines)
+- Added API_DOCUMENTATION.md with Swagger/OpenAPI guide (650+ lines)
+  - Complete authentication flow examples
+  - Pagination, filtering, and sorting guides
+  - Best practices for developers
+  - Custom decorator usage examples
+  - Error response documentation
+  - Tips & tricks for using the API
 - Updated docs/README.md with optimization references
 - Added 9 performance optimizations and 4 security improvements
 - Updated version to 2.0.0 in OPTIMIZATION_GUIDE.md
@@ -126,6 +176,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.github/workflows/ci-cd.yml` - Main CI/CD pipeline
 - `.github/workflows/pr-check.yml` - PR validation workflow
 - `.env.example` - Environment variables template
+- `src/common/decorators/swagger.decorator.ts` - Custom Swagger decorators
+- `src/common/dto/pagination.dto.ts` - Enhanced with Swagger examples
+- `docs/API_DOCUMENTATION.md` - Complete API documentation guide
 
 ### Dependencies Added
 - `compression` - API response compression
