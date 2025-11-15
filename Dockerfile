@@ -2,57 +2,64 @@
 # Multi-stage Dockerfile for TalabaHub Backend
 # ==========================================
 
-# Stage 1: Build stage
-FROM node:20-alpine AS builder
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
 
-# Set working directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci && \
-    npm cache clean --force
+# Install dependencies
+RUN npm ci && npm cache clean --force
+
+# Generate Prisma Client
+ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
+RUN npx prisma generate
+
+# ==========================================
+# Stage 2: Builder
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/prisma ./prisma
 
 # Copy application source
 COPY . .
-
-# Generate Prisma Client (with dummy DATABASE_URL for build time)
-ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
-RUN npx prisma generate
 
 # Build application
 RUN npm run build
 
 # ==========================================
-# Stage 2: Production stage
+# Stage 3: Production
 FROM node:20-alpine AS production
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and wget for healthcheck
+RUN apk add --no-cache dumb-init wget
 
 # Create app user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001
 
-# Set working directory
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY --chown=nestjs:nodejs package*.json ./
 
-# Copy Prisma schema
-COPY --from=builder /app/prisma ./prisma
+# Copy Prisma files
+COPY --chown=nestjs:nodejs --from=builder /app/prisma ./prisma
 
-# Copy node_modules from builder (already contains all dependencies and Prisma client)
-COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+# Copy node_modules with Prisma client
+COPY --chown=nestjs:nodejs --from=deps /app/node_modules ./node_modules
 
-# Copy built application from builder
-COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+# Copy built application
+COPY --chown=nestjs:nodejs --from=builder /app/dist ./dist
 
-# Copy necessary files
+# Copy email templates
 COPY --chown=nestjs:nodejs src/mail/templates ./src/mail/templates
 
 # Create logs directory
@@ -66,10 +73,10 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/api/health/live', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health/live || exit 1
 
-# Use dumb-init to handle signals properly
+# Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application with migrations
+# Start application (migrations will run before starting)
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

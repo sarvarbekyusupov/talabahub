@@ -2,13 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
 
 env:
   NODE_VERSION: '20'
@@ -74,13 +70,6 @@ jobs:
       - name: Run tests
         run: npm run test
 
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        if: success()
-        with:
-          files: ./coverage/lcov.info
-          flags: unittests
-
   # ==========================================
   # Job 3: Build Docker Image
   # ==========================================
@@ -103,25 +92,17 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:main
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
@@ -157,32 +138,7 @@ jobs:
           sarif_file: 'trivy-results.sarif'
 
   # ==========================================
-  # Job 5: Deploy to Staging (on develop branch)
-  # ==========================================
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [build, security]
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    environment:
-      name: staging
-      url: https://staging-api.talabahub.com
-
-    steps:
-      - name: Deploy to staging server
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          script: |
-            cd /var/www/talabahub-backend
-            docker-compose pull
-            docker-compose up -d --force-recreate
-            docker image prune -f
-
-  # ==========================================
-  # Job 6: Deploy to Production (on main branch)
+  # Job 5: Deploy to Production
   # ==========================================
   deploy-production:
     name: Deploy to Production
@@ -191,182 +147,65 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: production
-      url: https://api.talabahub.com
+      url: http://3.121.174.54:3030
 
     steps:
-      - name: Deploy to production server
-        id: deploy
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy compose file to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "/var/www/talabahub-backend/"
+
+      - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.PRODUCTION_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          envs: DOCKER_USERNAME
           script: |
             cd /var/www/talabahub-backend
 
-            # Create production docker-compose file
-            cat > docker-compose.prod.yml <<'COMPOSE_EOF'
-            services:
-              postgres:
-                image: postgres:16-alpine
-                container_name: talabahub-postgres
-                restart: unless-stopped
-                environment:
-                  POSTGRES_USER: $${DB_USER:-talabahub}
-                  POSTGRES_PASSWORD: $${DB_PASSWORD:-talabahub_password}
-                  POSTGRES_DB: $${DB_NAME:-talabahub}
-                ports:
-                  - '$${DB_PORT:-5432}:5432'
-                volumes:
-                  - postgres_data:/var/lib/postgresql/data
-                healthcheck:
-                  test: ['CMD-SHELL', 'pg_isready -U $${DB_USER:-talabahub}']
-                  interval: 10s
-                  timeout: 5s
-                  retries: 5
-                networks:
-                  - talabahub-network
+            echo "📦 Pulling latest images..."
+            docker compose -f docker-compose.prod.yml pull
 
-              redis:
-                image: redis:7-alpine
-                container_name: talabahub-redis
-                restart: unless-stopped
-                ports:
-                  - '$${REDIS_PORT:-6379}:6379'
-                volumes:
-                  - redis_data:/data
-                command: redis-server --appendonly yes --requirepass $${REDIS_PASSWORD:-redis_password}
-                healthcheck:
-                  test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
-                  interval: 10s
-                  timeout: 3s
-                  retries: 5
-                networks:
-                  - talabahub-network
+            echo "🚀 Starting services..."
+            docker compose -f docker-compose.prod.yml up -d
 
-              backend:
-                image: ${{ secrets.DOCKER_USERNAME }}/talabahub-backend:main
-                container_name: talabahub-backend
-                restart: unless-stopped
-                ports:
-                  - '3030:3000'
-                environment:
-                  NODE_ENV: production
-                  PORT: 3000
-                  DATABASE_URL: postgresql://$${DB_USER:-talabahub}:$${DB_PASSWORD:-talabahub_password}@postgres:5432/$${DB_NAME:-talabahub}?schema=public&connection_limit=10&pool_timeout=20
-                  REDIS_HOST: redis
-                  REDIS_PORT: 6379
-                  REDIS_PASSWORD: $${REDIS_PASSWORD:-redis_password}
-                  JWT_ACCESS_SECRET: $${JWT_ACCESS_SECRET}
-                  JWT_REFRESH_SECRET: $${JWT_REFRESH_SECRET}
-                  CLOUDINARY_CLOUD_NAME: $${CLOUDINARY_CLOUD_NAME}
-                  CLOUDINARY_API_KEY: $${CLOUDINARY_API_KEY}
-                  CLOUDINARY_API_SECRET: $${CLOUDINARY_API_SECRET}
-                  MAIL_HOST: $${MAIL_HOST}
-                  MAIL_PORT: $${MAIL_PORT}
-                  MAIL_USER: $${MAIL_USER}
-                  MAIL_PASSWORD: $${MAIL_PASSWORD}
-                  MAIL_FROM: $${MAIL_FROM}
-                  FRONTEND_URL: $${FRONTEND_URL:-http://localhost:5173}
-                  THROTTLE_TTL: $${THROTTLE_TTL:-60000}
-                  THROTTLE_LIMIT: $${THROTTLE_LIMIT:-10}
-                depends_on:
-                  postgres:
-                    condition: service_healthy
-                  redis:
-                    condition: service_healthy
-                volumes:
-                  - ./logs:/app/logs
-                healthcheck:
-                  test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:3000/api/health/live || exit 1']
-                  interval: 30s
-                  timeout: 10s
-                  retries: 3
-                  start_period: 40s
-                networks:
-                  - talabahub-network
-
-            volumes:
-              postgres_data:
-                driver: local
-              redis_data:
-                driver: local
-
-            networks:
-              talabahub-network:
-                driver: bridge
-            COMPOSE_EOF
-
-            echo "Production docker-compose.yml created"
-
-            # Get current container ID before deploying
-            OLD_CONTAINER=$(docker-compose -f docker-compose.prod.yml ps -q backend 2>/dev/null || echo "")
-
-            # Pull new version
-            echo "Pulling new version..."
-            docker-compose -f docker-compose.prod.yml pull backend
-
-            # Deploy new version
-            echo "Deploying new version..."
-            docker-compose -f docker-compose.prod.yml up -d --force-recreate
-
-            # Wait for container to start and run migrations
-            echo "Waiting for application to start (30 seconds for migrations)..."
+            echo "⏳ Waiting 30s for startup..."
             sleep 30
 
-            # Check container logs for any errors
-            echo "Checking container logs..."
-            docker-compose -f docker-compose.prod.yml logs --tail=20 backend
+            echo "📋 Container status:"
+            docker compose -f docker-compose.prod.yml ps
 
-            # Health check with retries
-            echo "Running health check..."
-            MAX_RETRIES=5
-            RETRY_COUNT=0
+            echo "📝 Recent logs:"
+            docker compose -f docker-compose.prod.yml logs --tail=30 backend
 
-            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              if curl -f http://localhost:3030/api/health/live; then
+            echo "🏥 Health check..."
+            for i in 1 2 3 4 5; do
+              if curl -sf http://localhost:3030/api/health/live > /dev/null; then
                 echo "✅ Deployment successful!"
                 docker image prune -f
                 exit 0
               fi
-              RETRY_COUNT=$((RETRY_COUNT + 1))
-              echo "Health check attempt $RETRY_COUNT/$MAX_RETRIES failed, retrying in 5 seconds..."
+              echo "Attempt $i/5 failed, retrying in 5s..."
               sleep 5
             done
 
-            # Health check failed after all retries
-            echo "❌ Health check failed after $MAX_RETRIES attempts!"
-            echo "Showing recent logs:"
-            docker-compose -f docker-compose.prod.yml logs --tail=50 backend
-
-            # Rollback if old container existed
-            if [ -n "$OLD_CONTAINER" ]; then
-              echo "Rolling back to previous version..."
-              docker-compose -f docker-compose.prod.yml down backend
-              docker-compose -f docker-compose.prod.yml up -d backend
-            fi
-
+            echo "❌ Health check failed!"
+            docker compose -f docker-compose.prod.yml logs --tail=100 backend
             exit 1
 
-      - name: Rollback on failure
-        if: failure()
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          script: |
-            cd /var/www/talabahub-backend
-            echo "⚠️ Deployment failed - rollback already attempted in deploy step"
-            docker-compose -f docker-compose.prod.yml ps
-
-      - name: Notify deployment success
-        if: success()
+      - name: Deployment status
+        if: always()
         run: |
-          echo "✅ Production deployment successful!"
-
-      - name: Notify deployment failure
-        if: failure()
-        run: |
-          echo "❌ Production deployment failed and was rolled back!"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Production deployment successful!"
+          else
+            echo "❌ Production deployment failed!"
+          fi
