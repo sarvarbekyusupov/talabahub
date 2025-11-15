@@ -204,8 +204,10 @@ jobs:
             # Create logs directory
             mkdir -p logs
 
-            # Stop and remove old containers if they exist
+            # Stop and remove ALL old containers to free up ports
             echo "🧹 Cleaning up old containers..."
+            docker stop talabahub-backend talabahub-postgres talabahub-redis 2>/dev/null || true
+            docker rm talabahub-backend talabahub-postgres talabahub-redis 2>/dev/null || true
             docker compose -f docker-compose.prod.yml down 2>/dev/null || true
 
             # Create docker-compose.prod.yml
