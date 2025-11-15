@@ -24,7 +24,7 @@ export class IsUzbekPhoneConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsUzbekPhone(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -59,7 +59,7 @@ export class IsStrongPasswordConstraint implements ValidatorConstraintInterface 
 }
 
 export function IsStrongPassword(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -88,7 +88,7 @@ export class IsStudentIdConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsStudentId(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -116,7 +116,7 @@ export class IsFutureDateConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsFutureDate(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -144,7 +144,7 @@ export class IsPastDateConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsPastDate(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -184,7 +184,7 @@ export class IsAgeInRangeConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsAgeInRange(min: number, max: number, validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -213,7 +213,7 @@ export class IsUzbekPostalCodeConstraint implements ValidatorConstraintInterface
 }
 
 export function IsUzbekPostalCode(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -245,7 +245,7 @@ export class IsValidUrlConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsValidUrl(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -260,7 +260,7 @@ export function IsValidUrl(validationOptions?: ValidationOptions) {
  * Validates file size (in bytes)
  */
 export function IsFileSize(maxSize: number, validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
@@ -300,7 +300,7 @@ export class IsUzbekNameConstraint implements ValidatorConstraintInterface {
 }
 
 export function IsUzbekName(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,

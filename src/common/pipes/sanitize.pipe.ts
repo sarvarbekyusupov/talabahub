@@ -10,7 +10,7 @@ import * as sanitizeHtml from 'sanitize-html';
  */
 @Injectable()
 export class SanitizePipe implements PipeTransform {
-  transform(value: any, metadata: ArgumentMetadata) {
+  transform(value: any, _metadata: ArgumentMetadata) {
     if (!value) return value;
 
     return this.sanitizeValue(value);
@@ -32,7 +32,7 @@ export class SanitizePipe implements PipeTransform {
     if (typeof value === 'object' && value !== null) {
       const sanitized: any = {};
       for (const key in value) {
-        if (value.hasOwnProperty(key)) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
           sanitized[key] = this.sanitizeValue(value[key]);
         }
       }
