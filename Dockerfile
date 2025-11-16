@@ -50,6 +50,9 @@ WORKDIR /app
 # Copy package files
 COPY --chown=nestjs:nodejs package*.json ./
 
+# Copy TypeScript config for seed script
+COPY --chown=nestjs:nodejs tsconfig.json ./
+
 # Copy Prisma files
 COPY --chown=nestjs:nodejs --from=builder /app/prisma ./prisma
 
