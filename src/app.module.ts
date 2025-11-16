@@ -27,6 +27,9 @@ import { CacheModule } from './cache/cache.module';
 import { QueueModule } from './queue/queue.module';
 import { AuditModule } from './audit/audit.module';
 import { SearchModule } from './search/search.module';
+import { SavedSearchesModule } from './saved-searches/saved-searches.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -68,6 +71,9 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     QueueModule,
     AuditModule,
     SearchModule,
+    SavedSearchesModule,
+    NotificationsModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [
