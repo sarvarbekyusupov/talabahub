@@ -206,8 +206,10 @@ jobs:
               echo "⚠️  .env file created with default values. Please update with real credentials!"
             fi
 
-            # Create logs directory
+            # Create logs directory with proper permissions
             mkdir -p logs
+            # Set permissions so the container's nestjs user (uid 1001) can write
+            chmod 777 logs
 
             # Stop and remove only our containers (won't affect other projects)
             echo "🧹 Cleaning up old containers..."
