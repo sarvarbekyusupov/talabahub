@@ -40,7 +40,14 @@ async function start() {
       helmet({
         contentSecurityPolicy:
           NODE_ENV === "production"
-            ? undefined
+            ? {
+                directives: {
+                  defaultSrc: ["'self'"],
+                  styleSrc: ["'self'", "'unsafe-inline'"],
+                  scriptSrc: ["'self'", "'unsafe-inline'"],
+                  imgSrc: ["'self'", "data:", "https:"],
+                },
+              }
             : false, // Disable in dev for Swagger
       })
     );
@@ -49,7 +56,9 @@ async function start() {
     app.use(compression());
 
     app.use(cookieParser());
-    app.setGlobalPrefix("api");
+    app.setGlobalPrefix("api", {
+      exclude: ["docs"], // Exclude /docs from global prefix
+    });
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     app.useGlobalFilters(new AllExceptionsFilter());
 
@@ -179,7 +188,7 @@ API requests are limited to **10 requests per minute** by default. Contact suppo
     const swaggerDoc = SwaggerModule.createDocument(app, swaggerConfig);
 
     // Custom Swagger UI configuration
-    SwaggerModule.setup("api", app, swaggerDoc, {
+    SwaggerModule.setup("docs", app, swaggerDoc, {
       swaggerOptions: {
         persistAuthorization: true,
         docExpansion: "none", // Collapse all by default
