@@ -80,4 +80,4 @@ ENTRYPOINT ["dumb-init", "--"]
 
 # Start application (migrations will run before starting)
 # Resolve any failed migrations first, then deploy
-CMD ["sh", "-c", "npx prisma migrate resolve --applied add_audit_log || true && npx prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "npx prisma migrate resolve --applied add_audit_log || true && npx prisma migrate deploy && node dist/src/main"]
