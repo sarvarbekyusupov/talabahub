@@ -328,8 +328,9 @@ jobs:
             echo "📄 Seed output:"
             cat /tmp/seed.log || echo "No seed log available"
 
-            echo "🔍 Ensuring admin user exists..."
+            echo "🔍 Ensuring test users exist..."
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQLEOF'
+            -- Admin user
             INSERT INTO users (id, email, password_hash, first_name, last_name, role, verification_status, is_active, is_email_verified, created_at, updated_at)
             VALUES (
               gen_random_uuid(),
@@ -349,11 +350,53 @@ jobs:
               is_active = EXCLUDED.is_active,
               is_email_verified = EXCLUDED.is_email_verified,
               updated_at = NOW();
-            SQLEOF
-            echo "✅ Admin user created/updated"
 
-            echo "📊 Current users in database:"
-            docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub -c "SELECT email, first_name, last_name, role, is_active, is_email_verified FROM users WHERE email = 'admin@talabahub.com';" || echo "Failed to query database"
+            -- Student user
+            INSERT INTO users (id, email, password_hash, first_name, last_name, role, verification_status, is_active, is_email_verified, created_at, updated_at)
+            VALUES (
+              gen_random_uuid(),
+              'student@talabahub.com',
+              '$2b$10$NUUPJm/D1bNZ.IIBp4WN1.dBQ72x3KeWzAeGPIwKYZH.RVuQON1be',
+              'Test',
+              'Student',
+              'student',
+              'verified',
+              true,
+              true,
+              NOW(),
+              NOW()
+            )
+            ON CONFLICT (email) DO UPDATE SET
+              password_hash = EXCLUDED.password_hash,
+              is_active = EXCLUDED.is_active,
+              is_email_verified = EXCLUDED.is_email_verified,
+              updated_at = NOW();
+
+            -- Partner user
+            INSERT INTO users (id, email, password_hash, first_name, last_name, role, verification_status, is_active, is_email_verified, created_at, updated_at)
+            VALUES (
+              gen_random_uuid(),
+              'partner@talabahub.com',
+              '$2b$10$NUUPJm/D1bNZ.IIBp4WN1.dBQ72x3KeWzAeGPIwKYZH.RVuQON1be',
+              'Test',
+              'Partner',
+              'partner',
+              'verified',
+              true,
+              true,
+              NOW(),
+              NOW()
+            )
+            ON CONFLICT (email) DO UPDATE SET
+              password_hash = EXCLUDED.password_hash,
+              is_active = EXCLUDED.is_active,
+              is_email_verified = EXCLUDED.is_email_verified,
+              updated_at = NOW();
+            SQLEOF
+            echo "✅ Test users created/updated (admin, student, partner)"
+
+            echo "📊 Current test users in database:"
+            docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub -c "SELECT email, first_name, last_name, role, is_active, is_email_verified FROM users WHERE email IN ('admin@talabahub.com', 'student@talabahub.com', 'partner@talabahub.com');" || echo "Failed to query database"
 
             echo "📝 Recent logs:"
             docker compose -f docker-compose.prod.yml logs --tail=50 backend
