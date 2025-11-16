@@ -323,10 +323,13 @@ jobs:
             docker compose -f docker-compose.prod.yml ps
 
             echo "🌱 Seeding database with test data..."
-            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db seed || echo "⚠️  Seed failed or already seeded"
+            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db seed 2>&1 | tee /tmp/seed.log || echo "⚠️  Seed failed or already seeded"
+
+            echo "📄 Seed output:"
+            cat /tmp/seed.log || echo "No seed log available"
 
             echo "📝 Recent logs:"
-            docker compose -f docker-compose.prod.yml logs --tail=30 backend
+            docker compose -f docker-compose.prod.yml logs --tail=50 backend
 
             echo "🏥 Health check..."
             for i in 1 2 3 4 5; do
