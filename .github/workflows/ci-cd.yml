@@ -322,6 +322,9 @@ jobs:
             echo "📋 Container status:"
             docker compose -f docker-compose.prod.yml ps
 
+            echo "🌱 Seeding database with test data..."
+            docker compose -f docker-compose.prod.yml exec -T backend npm run seed || echo "⚠️  Seed failed or already seeded"
+
             echo "📝 Recent logs:"
             docker compose -f docker-compose.prod.yml logs --tail=30 backend
 
