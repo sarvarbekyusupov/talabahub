@@ -43,18 +43,19 @@ function randomBoolean(probability = 0.5): boolean {
  * University Factory
  */
 export async function createUniversity(data?: Partial<any>) {
-  const name = data?.name || `${randomElement(uzbekCities)} State University`;
+  const { name, ...restData } = data || {};
+  const universityName = name || `${randomElement(uzbekCities)} State University`;
 
   return await prisma.university.create({
     data: {
-      nameUz: name,
-      nameEn: name,
+      nameUz: universityName,
+      nameEn: universityName,
       address: `${randomInt(1, 100)} ${randomElement(['Amir Temur', 'Navoi', 'Buyuk Ipak Yoli'])} Street`,
       city: data?.city || randomElement(uzbekCities),
       region: randomElement(uzbekCities),
-      website: `https://${name.toLowerCase().replace(/\s+/g, '')}.uz`,
+      website: `https://${universityName.toLowerCase().replace(/\s+/g, '')}.uz`,
       logoUrl: `https://via.placeholder.com/200x200?text=University`,
-      ...data,
+      ...restData,
     },
   });
 }
@@ -103,6 +104,8 @@ export async function createUser(data?: Partial<any>) {
  * Category Factory
  */
 export async function createCategory(data?: Partial<any>) {
+  const { name, icon, description, ...restData } = data || {};
+
   const categories = [
     { name: 'Food & Drinks', icon: '🍔', description: 'Restaurants, cafes, and food delivery' },
     { name: 'Shopping', icon: '🛍️', description: 'Fashion, electronics, and retail' },
@@ -113,7 +116,7 @@ export async function createCategory(data?: Partial<any>) {
     { name: 'Technology', icon: '💻', description: 'Software, gadgets, and services' },
   ];
 
-  const category = data?.name ? { name: data.name, icon: data.icon || '🏷️', description: data.description } : randomElement(categories);
+  const category = name ? { name, icon: icon || '🏷️', description } : randomElement(categories);
 
   return await prisma.category.create({
     data: {
@@ -123,7 +126,7 @@ export async function createCategory(data?: Partial<any>) {
       description: category.description,
       icon: category.icon,
       isActive: true,
-      ...data,
+      ...restData,
     },
   });
 }
@@ -132,6 +135,8 @@ export async function createCategory(data?: Partial<any>) {
  * Brand Factory
  */
 export async function createBrand(categoryId?: number, data?: Partial<any>) {
+  const { name, ...restData } = data || {};
+
   const brands = [
     'MaxWay', 'Evos', 'KFC', 'Burger King', 'Pizza Hut',
     'Artel', 'Samsung', 'Xiaomi', 'Nike', 'Adidas',
@@ -143,18 +148,18 @@ export async function createBrand(categoryId?: number, data?: Partial<any>) {
     return categories.length > 0 ? randomElement(categories) : await createCategory();
   })();
 
-  const name = data?.name || randomElement(brands);
+  const brandName = name || randomElement(brands);
 
   return await prisma.brand.create({
     data: {
-      name,
-      slug: name.toLowerCase().replace(/\s+/g, '-'),
+      name: brandName,
+      slug: brandName.toLowerCase().replace(/\s+/g, '-'),
       description: `Leading brand offering quality products and services`,
-      logoUrl: `https://via.placeholder.com/200x200?text=${name}`,
-      website: `https://${name.toLowerCase()}.uz`,
+      logoUrl: `https://via.placeholder.com/200x200?text=${brandName}`,
+      website: `https://${brandName.toLowerCase()}.uz`,
       categoryId: category.id,
       isActive: true,
-      ...data,
+      ...restData,
     },
   });
 }
@@ -195,26 +200,28 @@ export async function createDiscount(data?: Partial<any>) {
  * Company Factory
  */
 export async function createCompany(data?: Partial<any>) {
+  const { name, ...restData } = data || {};
+
   const companies = [
     'UZINFOCOM', 'Uztelecom', 'Unitel', 'TechnoLab', 'IT Park',
     'Uzsoft', 'Digital City', 'Smart Solutions', 'InnoTech', 'CodeCraft',
   ];
 
-  const name = data?.name || randomElement(companies);
+  const companyName = name || randomElement(companies);
 
   return await prisma.company.create({
     data: {
-      name,
-      slug: name.toLowerCase().replace(/\s+/g, '-'),
+      name: companyName,
+      slug: companyName.toLowerCase().replace(/\s+/g, '-'),
       description: `Leading technology company in Uzbekistan`,
-      logoUrl: `https://via.placeholder.com/200x200?text=${name}`,
-      website: `https://${name.toLowerCase().replace(/\s+/g, '')}.uz`,
+      logoUrl: `https://via.placeholder.com/200x200?text=${companyName}`,
+      website: `https://${companyName.toLowerCase().replace(/\s+/g, '')}.uz`,
       industry: randomElement(['IT', 'Telecommunications', 'Software', 'Consulting']),
       companySize: randomElement(['10-50', '50-100', '100-500']),
       foundedYear: randomInt(2000, 2020),
       address: `${randomInt(1, 100)} ${randomElement(['Amir Temur', 'Navoi'])} Street, Tashkent`,
       isActive: true,
-      ...data,
+      ...restData,
     },
   });
 }
