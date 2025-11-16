@@ -330,7 +330,7 @@ jobs:
 
             echo "🔍 Ensuring admin user exists..."
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQLEOF'
-            INSERT INTO "User" (id, email, "passwordHash", "firstName", "lastName", role, "verificationStatus", "isActive", "isEmailVerified", "createdAt", "updatedAt")
+            INSERT INTO users (id, email, password_hash, first_name, last_name, role, verification_status, is_active, is_email_verified, created_at, updated_at)
             VALUES (
               gen_random_uuid(),
               'admin@talabahub.com',
@@ -345,15 +345,15 @@ jobs:
               NOW()
             )
             ON CONFLICT (email) DO UPDATE SET
-              "passwordHash" = EXCLUDED."passwordHash",
-              "isActive" = EXCLUDED."isActive",
-              "isEmailVerified" = EXCLUDED."isEmailVerified",
-              "updatedAt" = NOW();
+              password_hash = EXCLUDED.password_hash,
+              is_active = EXCLUDED.is_active,
+              is_email_verified = EXCLUDED.is_email_verified,
+              updated_at = NOW();
             SQLEOF
             echo "✅ Admin user created/updated"
 
             echo "📊 Current users in database:"
-            docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub -c "SELECT email, \"firstName\", \"lastName\", role, \"isActive\", \"isEmailVerified\" FROM \"User\" WHERE email = 'admin@talabahub.com';" || echo "Failed to query database"
+            docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub -c "SELECT email, first_name, last_name, role, is_active, is_email_verified FROM users WHERE email = 'admin@talabahub.com';" || echo "Failed to query database"
 
             echo "📝 Recent logs:"
             docker compose -f docker-compose.prod.yml logs --tail=50 backend
