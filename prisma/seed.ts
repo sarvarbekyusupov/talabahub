@@ -86,6 +86,8 @@ async function main() {
     lastName: 'User',
     role: 'admin',
     verificationStatus: 'verified',
+    isActive: true,
+    isEmailVerified: true,
   });
   console.log(`✅ Created admin user (email: ${admin.email}, password: Password123!)\n`);
 
