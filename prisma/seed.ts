@@ -107,18 +107,23 @@ async function main() {
   }
   console.log(`✅ Created ${users.length} users\n`);
 
-  // Seed Admin User
-  console.log('👤 Creating admin user...');
-  const admin = await createUser({
-    email: 'admin@talabahub.com',
-    firstName: 'Admin',
-    lastName: 'User',
-    role: 'admin',
-    verificationStatus: 'verified',
-    isActive: true,
-    isEmailVerified: true,
-  });
-  console.log(`✅ Created admin user (email: ${admin.email}, password: Password123!)\n`);
+  // Seed Admin User (skip if exists)
+  console.log('👤 Checking admin user...');
+  const existingAdmin = await prisma.user.findUnique({ where: { email: 'admin@talabahub.com' } });
+  if (!existingAdmin) {
+    const admin = await createUser({
+      email: 'admin@talabahub.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      role: 'admin',
+      verificationStatus: 'verified',
+      isActive: true,
+      isEmailVerified: true,
+    });
+    console.log(`✅ Created admin user (email: ${admin.email}, password: Password123!)\n`);
+  } else {
+    console.log(`✅ Admin user already exists\n`);
+  }
 
   // Seed Companies
   console.log('🏢 Creating companies...');

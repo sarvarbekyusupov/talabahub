@@ -66,7 +66,8 @@ export async function createUniversity(data?: Partial<any>) {
 export async function createUser(data?: Partial<any>) {
   const firstName = randomElement(uzbekFirstNames);
   const lastName = randomElement(uzbekLastNames);
-  const email = data?.email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@student.uz`;
+  const uniqueId = randomInt(1000, 9999);
+  const email = data?.email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${uniqueId}@student.uz`;
 
   // Get or create a random university
   let university = data?.university;
