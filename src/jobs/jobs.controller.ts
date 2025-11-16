@@ -117,6 +117,18 @@ export class JobsController {
     type: Boolean,
     description: 'Filter by featured status',
   })
+  @ApiQuery({
+    name: 'minSalary',
+    required: false,
+    type: Number,
+    description: 'Minimum salary',
+  })
+  @ApiQuery({
+    name: 'maxSalary',
+    required: false,
+    type: Number,
+    description: 'Maximum salary',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of jobs with pagination metadata',
@@ -130,6 +142,8 @@ export class JobsController {
     @Query('isRemote') isRemote?: boolean,
     @Query('minCourseYear') minCourseYear?: number,
     @Query('isFeatured') isFeatured?: boolean,
+    @Query('minSalary') minSalary?: number,
+    @Query('maxSalary') maxSalary?: number,
   ) {
     return this.jobsService.findAll(
       page,
@@ -141,6 +155,8 @@ export class JobsController {
       minCourseYear,
       undefined, // isActive is not exposed as query param
       isFeatured,
+      minSalary,
+      maxSalary,
     );
   }
 

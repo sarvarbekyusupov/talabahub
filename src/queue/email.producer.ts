@@ -186,6 +186,29 @@ export class EmailProducer {
   }
 
   /**
+   * Queue notification email
+   */
+  async sendNotificationEmail(data: {
+    to: string;
+    subject: string;
+    message: string;
+    actionUrl?: string;
+    actionLabel?: string;
+  }) {
+    try {
+      await this.emailQueue.add('notification', data, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2000 },
+        removeOnComplete: true,
+      });
+      this.logger.log(`Notification email queued for ${data.to}`);
+    } catch (error) {
+      this.logger.error(`Failed to queue notification email: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Get queue statistics
    */
   async getQueueStats() {

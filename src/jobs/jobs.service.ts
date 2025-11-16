@@ -51,6 +51,8 @@ export class JobsService {
     minCourseYear?: number,
     isActive?: boolean,
     isFeatured?: boolean,
+    minSalary?: number,
+    maxSalary?: number,
   ) {
     const skip = (page - 1) * limit;
 
@@ -64,6 +66,14 @@ export class JobsService {
       where.minCourseYear = { lte: minCourseYear };
     if (isActive !== undefined) where.isActive = isActive;
     if (isFeatured !== undefined) where.isFeatured = isFeatured;
+
+    // Salary filtering
+    if (minSalary !== undefined) {
+      where.salaryMax = { gte: minSalary };
+    }
+    if (maxSalary !== undefined) {
+      where.salaryMin = { lte: maxSalary };
+    }
 
     // Filter by active deadline
     where.AND = [
