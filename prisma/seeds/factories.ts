@@ -118,12 +118,13 @@ export async function createCategory(data?: Partial<any>) {
   ];
 
   const category = name ? { name, icon: icon || '🏷️', description } : randomElement(categories);
+  const uniqueSlug = `${category.name.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and')}-${randomInt(1000, 9999)}`;
 
   return await prisma.category.create({
     data: {
       nameUz: category.name,
       nameEn: category.name,
-      slug: category.name.toLowerCase().replace(/\s+/g, '-').replace(/&/g, 'and'),
+      slug: uniqueSlug,
       description: category.description,
       icon: category.icon,
       isActive: true,
@@ -211,11 +212,12 @@ export async function createCompany(data?: Partial<any>) {
   ];
 
   const companyName = name || randomElement(companies);
+  const uniqueSlug = `${companyName.toLowerCase().replace(/\s+/g, '-')}-${randomInt(1000, 9999)}`;
 
   return await prisma.company.create({
     data: {
       name: companyName,
-      slug: companyName.toLowerCase().replace(/\s+/g, '-'),
+      slug: uniqueSlug,
       description: `Leading technology company in Uzbekistan`,
       logoUrl: `https://via.placeholder.com/200x200?text=${companyName}`,
       website: `https://${companyName.toLowerCase().replace(/\s+/g, '')}.uz`,
