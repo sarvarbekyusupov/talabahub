@@ -36,19 +36,13 @@ async function start() {
     app.useLogger(loggerService);
 
     // Security headers with Helmet
+    // Disable some headers for Swagger to work properly over HTTP
     app.use(
       helmet({
-        contentSecurityPolicy:
-          NODE_ENV === "production"
-            ? {
-                directives: {
-                  defaultSrc: ["'self'"],
-                  styleSrc: ["'self'", "'unsafe-inline'"],
-                  scriptSrc: ["'self'", "'unsafe-inline'"],
-                  imgSrc: ["'self'", "data:", "https:"],
-                },
-              }
-            : false, // Disable in dev for Swagger
+        contentSecurityPolicy: false, // Disable CSP to allow Swagger UI
+        crossOriginEmbedderPolicy: false,
+        crossOriginOpenerPolicy: false,
+        crossOriginResourcePolicy: false,
       })
     );
 
@@ -203,7 +197,6 @@ API requests are limited to **10 requests per minute** by default. Contact suppo
         operationsSorter: "alpha", // Sort operations alphabetically
       },
       customSiteTitle: "TalabaHub API Documentation",
-      customfavIcon: "https://talabahub.com/favicon.ico",
       customCss: `
         .swagger-ui .topbar {
           background-color: #2c3e50;
