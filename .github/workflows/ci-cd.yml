@@ -328,13 +328,8 @@ jobs:
             echo "📄 Seed output:"
             cat /tmp/seed.log || echo "No seed log available"
 
-            echo "🔍 Checking database for users..."
-            USER_COUNT=$(docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub -t -c "SELECT COUNT(*) FROM \"User\";" | xargs)
-            echo "Found $USER_COUNT users in database"
-
-            if [ "$USER_COUNT" -eq 0 ]; then
-              echo "⚠️  No users found, creating admin user manually..."
-              docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQLEOF'
+            echo "🔍 Ensuring admin user exists..."
+            docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQLEOF'
             INSERT INTO "User" (id, email, "passwordHash", "firstName", "lastName", role, "verificationStatus", "isActive", "isEmailVerified", "createdAt", "updatedAt")
             VALUES (
               gen_random_uuid(),
@@ -355,10 +350,10 @@ jobs:
               "isEmailVerified" = EXCLUDED."isEmailVerified",
               "updatedAt" = NOW();
             SQLEOF
-              echo "✅ Admin user created/updated"
-            fi
+            echo "✅ Admin user created/updated"
 
-            docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub -c "SELECT email, \"firstName\", \"lastName\", role, \"isActive\", \"isEmailVerified\" FROM \"User\" LIMIT 5;" || echo "Failed to query database"
+            echo "📊 Current users in database:"
+            docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub -c "SELECT email, \"firstName\", \"lastName\", role, \"isActive\", \"isEmailVerified\" FROM \"User\" WHERE email = 'admin@talabahub.com';" || echo "Failed to query database"
 
             echo "📝 Recent logs:"
             docker compose -f docker-compose.prod.yml logs --tail=50 backend
