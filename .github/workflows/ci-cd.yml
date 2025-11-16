@@ -210,6 +210,17 @@ jobs:
             docker rm talabahub-backend talabahub-postgres talabahub-redis 2>/dev/null || true
             docker compose -f docker-compose.prod.yml down 2>/dev/null || true
 
+            # Kill any process using ports 5432 and 6379
+            echo "🔍 Checking for processes using ports 5432 and 6379..."
+            sudo lsof -ti:5432 | xargs -r sudo kill -9 2>/dev/null || true
+            sudo lsof -ti:6379 | xargs -r sudo kill -9 2>/dev/null || true
+
+            # Double check - stop ANY container using these ports
+            docker ps -q --filter "publish=5432" | xargs -r docker stop 2>/dev/null || true
+            docker ps -q --filter "publish=6379" | xargs -r docker stop 2>/dev/null || true
+
+            sleep 2
+
             # Create docker-compose.prod.yml
             cat > docker-compose.prod.yml << 'EOF'
             services:
