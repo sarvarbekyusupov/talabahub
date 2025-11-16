@@ -134,7 +134,7 @@ export async function createCategory(data?: Partial<any>) {
 /**
  * Brand Factory
  */
-export async function createBrand(categoryId?: number, data?: Partial<any>) {
+export async function createBrand(categoryId?: number, data?: Partial<any>, index?: number) {
   const { name, ...restData } = data || {};
 
   const brands = [
@@ -149,11 +149,13 @@ export async function createBrand(categoryId?: number, data?: Partial<any>) {
   })();
 
   const brandName = name || randomElement(brands);
+  const slugBase = brandName.toLowerCase().replace(/\s+/g, '-');
+  const slug = index !== undefined ? `${slugBase}-${index}` : slugBase;
 
   return await prisma.brand.create({
     data: {
       name: brandName,
-      slug: brandName.toLowerCase().replace(/\s+/g, '-'),
+      slug,
       description: `Leading brand offering quality products and services`,
       logoUrl: `https://via.placeholder.com/200x200?text=${brandName}`,
       website: `https://${brandName.toLowerCase()}.uz`,
@@ -288,6 +290,414 @@ export async function createEvent(data?: Partial<any>) {
       isFree: !randomBoolean(0.2),
       ticketPrice: randomBoolean(0.2) ? randomInt(50000, 500000) : null,
       isActive: true,
+      ...data,
+    },
+  });
+}
+
+/**
+ * Education Partner Factory
+ */
+export async function createEducationPartner(data?: Partial<any>) {
+  const { name, ...restData } = data || {};
+
+  const partners = [
+    'IT Park Academy', 'Najot Ta\'lim', 'PDP Academy', 'Proweb', 'Inha University',
+    'Westminster International University', 'TEAM University', 'WIUT', 'CodeCraft Academy',
+  ];
+
+  const partnerName = name || randomElement(partners);
+
+  return await prisma.educationPartner.create({
+    data: {
+      name: partnerName,
+      slug: `${partnerName.toLowerCase().replace(/\s+/g, '-').replace(/'/g, '')}-${randomInt(100, 999)}`,
+      description: `Quality education and training programs`,
+      logoUrl: `https://via.placeholder.com/200x200?text=${partnerName}`,
+      website: `https://${partnerName.toLowerCase().replace(/\s+/g, '').replace(/'/g, '')}.uz`,
+      email: `info@${partnerName.toLowerCase().replace(/\s+/g, '').replace(/'/g, '')}.uz`,
+      phone: `+998${randomInt(90, 99)}${randomInt(1000000, 9999999)}`,
+      address: `${randomInt(1, 100)} ${randomElement(['Amir Temur', 'Navoi'])} Street, Tashkent`,
+      rating: randomInt(40, 50) / 10,
+      isActive: true,
+      isVerified: randomBoolean(0.8),
+      ...restData,
+    },
+  });
+}
+
+/**
+ * Course Factory
+ */
+export async function createCourse(partnerId?: number, data?: Partial<any>) {
+  const partner = partnerId ? { id: partnerId } : await (async () => {
+    const partners = await prisma.educationPartner.findMany();
+    return partners.length > 0 ? randomElement(partners) : await createEducationPartner();
+  })();
+
+  const courseNames = [
+    'Full Stack Web Development',
+    'Frontend Development with React',
+    'Backend Development with Node.js',
+    'Mobile Development with Flutter',
+    'Data Science with Python',
+    'UI/UX Design Fundamentals',
+    'DevOps Engineering',
+    'Cybersecurity Basics',
+  ];
+
+  const title = data?.title || randomElement(courseNames);
+  const level = randomElement(['beginner', 'intermediate', 'advanced']);
+  const originalPrice = randomInt(500000, 5000000);
+
+  return await prisma.course.create({
+    data: {
+      partnerId: partner.id,
+      title,
+      slug: `${title.toLowerCase().replace(/\s+/g, '-')}-${randomInt(1000, 9999)}`,
+      description: `Comprehensive ${level} level course in ${title}`,
+      syllabus: `Week 1-4: Fundamentals\nWeek 5-8: Advanced Topics\nWeek 9-12: Projects`,
+      learningOutcomes: ['Master the fundamentals', 'Build real-world projects', 'Get job-ready skills'],
+      thumbnailUrl: `https://via.placeholder.com/400x300?text=${title}`,
+      level: level as any,
+      durationHours: randomInt(40, 200),
+      durationWeeks: randomInt(8, 24),
+      language: randomElement(['uz', 'ru', 'en']),
+      originalPrice,
+      discountPrice: randomBoolean(0.5) ? originalPrice * 0.8 : null,
+      discountPercentage: randomBoolean(0.5) ? 20 : null,
+      prerequisites: level === 'beginner' ? [] : ['Basic programming knowledge'],
+      targetAudience: ['Students', 'Career changers', 'Professionals'],
+      startDate: new Date(Date.now() + randomInt(7, 60) * 24 * 60 * 60 * 1000),
+      rating: randomInt(40, 50) / 10,
+      isActive: true,
+      isFeatured: randomBoolean(0.2),
+      ...data,
+    },
+  });
+}
+
+/**
+ * Course Enrollment Factory
+ */
+export async function createCourseEnrollment(userId?: string, courseId?: string, data?: Partial<any>) {
+  const user = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : await createUser();
+  })();
+
+  const course = courseId ? { id: courseId } : await (async () => {
+    const courses = await prisma.course.findMany();
+    return courses.length > 0 ? randomElement(courses) : await createCourse();
+  })();
+
+  return await prisma.courseEnrollment.create({
+    data: {
+      courseId: course.id,
+      userId: user.id,
+      amountPaid: randomInt(500000, 3000000),
+      commissionEarned: randomInt(50000, 300000),
+      paymentMethod: randomElement(['payme', 'click', 'uzcard', 'humo']),
+      transactionId: `TXN${randomInt(100000, 999999)}`,
+      progressPercentage: randomInt(0, 100),
+      status: randomElement(['active', 'completed', 'suspended']),
+      ...data,
+    },
+  });
+}
+
+/**
+ * Discount Usage Factory
+ */
+export async function createDiscountUsage(userId?: string, discountId?: string, data?: Partial<any>) {
+  const user = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : await createUser();
+  })();
+
+  const discount = discountId ? { id: discountId } : await (async () => {
+    const discounts = await prisma.discount.findMany();
+    return discounts.length > 0 ? randomElement(discounts) : await createDiscount();
+  })();
+
+  const transactionAmount = randomInt(50000, 500000);
+  const discountAmount = transactionAmount * 0.2;
+
+  return await prisma.discountUsage.create({
+    data: {
+      discountId: discount.id,
+      userId: user.id,
+      transactionAmount,
+      discountAmount,
+      commissionEarned: discountAmount * 0.1,
+      deviceType: randomElement(['mobile', 'desktop', 'tablet']),
+      isVerified: randomBoolean(0.8),
+      ...data,
+    },
+  });
+}
+
+/**
+ * Job Application Factory
+ */
+export async function createJobApplication(userId?: string, jobId?: string, data?: Partial<any>) {
+  const user = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : await createUser();
+  })();
+
+  const job = jobId ? { id: jobId } : await (async () => {
+    const jobs = await prisma.job.findMany();
+    return jobs.length > 0 ? randomElement(jobs) : await createJob();
+  })();
+
+  return await prisma.jobApplication.create({
+    data: {
+      jobId: job.id,
+      userId: user.id,
+      cvUrl: 'https://example.com/cv.pdf',
+      coverLetter: 'I am very interested in this position...',
+      expectedSalary: randomInt(5000000, 20000000),
+      status: randomElement(['pending', 'reviewed', 'interview', 'accepted', 'rejected']),
+      ...data,
+    },
+  });
+}
+
+/**
+ * Event Registration Factory
+ */
+export async function createEventRegistration(userId?: string, eventId?: string, data?: Partial<any>) {
+  const user = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : await createUser();
+  })();
+
+  const event = eventId ? { id: eventId } : await (async () => {
+    const events = await prisma.event.findMany();
+    return events.length > 0 ? randomElement(events) : await createEvent();
+  })();
+
+  return await prisma.eventRegistration.create({
+    data: {
+      eventId: event.id,
+      userId: user.id,
+      status: randomElement(['registered', 'attended', 'cancelled']),
+      amountPaid: randomBoolean(0.3) ? randomInt(50000, 200000) : null,
+      paymentMethod: randomBoolean(0.3) ? randomElement(['payme', 'click']) : null,
+      ...data,
+    },
+  });
+}
+
+/**
+ * Review Factory
+ */
+export async function createReview(userId?: string, data?: Partial<any>) {
+  const user = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : await createUser();
+  })();
+
+  const reviewableType = randomElement(['Brand', 'Course', 'Company']);
+  const reviewableId = `${randomInt(1, 100)}`;
+
+  return await prisma.review.create({
+    data: {
+      userId: user.id,
+      reviewableType,
+      reviewableId,
+      rating: randomInt(3, 5),
+      title: 'Great experience!',
+      comment: 'I had a wonderful experience with this service.',
+      pros: 'Excellent quality and service',
+      cons: 'Could be more affordable',
+      isVerified: randomBoolean(0.7),
+      isApproved: true,
+      helpfulCount: randomInt(0, 50),
+      ...data,
+    },
+  });
+}
+
+/**
+ * Blog Post Factory
+ */
+export async function createBlogPost(authorId?: string, data?: Partial<any>) {
+  const author: { id: string } | null = authorId ? { id: authorId } : await (async () => {
+    const admins = await prisma.user.findMany({ where: { role: 'admin' } });
+    return admins.length > 0 ? randomElement(admins) : null;
+  })();
+
+  const titles = [
+    'Top 10 Student Discounts in Tashkent',
+    'How to Find Internships as a Student',
+    'Best Online Courses for Career Growth',
+    'Student Job Market Trends 2024',
+    'Tips for Successful Job Applications',
+  ];
+
+  const title = randomElement(titles);
+
+  return await prisma.blogPost.create({
+    data: {
+      authorId: author?.id,
+      title,
+      slug: `${title.toLowerCase().replace(/\s+/g, '-')}-${randomInt(1000, 9999)}`,
+      excerpt: 'Learn more about opportunities for students...',
+      content: `<h1>${title}</h1><p>This is a comprehensive guide about ${title.toLowerCase()}.</p>`,
+      featuredImage: 'https://via.placeholder.com/800x400?text=Blog',
+      metaTitle: title,
+      metaDescription: `Read about ${title.toLowerCase()}`,
+      metaKeywords: ['student', 'discounts', 'jobs'],
+      viewCount: randomInt(0, 1000),
+      readTimeMinutes: randomInt(3, 10),
+      status: 'published',
+      featured: randomBoolean(0.2),
+      publishedAt: new Date(),
+      ...data,
+    },
+  });
+}
+
+/**
+ * Notification Factory
+ */
+export async function createNotification(userId?: string, data?: Partial<any>) {
+  const user = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : await createUser();
+  })();
+
+  return await prisma.notification.create({
+    data: {
+      userId: user.id,
+      type: randomElement(['email', 'sms', 'push', 'in_app']),
+      title: 'New Discount Available!',
+      message: 'Check out our latest student discounts',
+      status: randomElement(['pending', 'sent', 'read']),
+      sentAt: randomBoolean(0.7) ? new Date() : null,
+      ...data,
+    },
+  });
+}
+
+/**
+ * Transaction Factory
+ */
+export async function createTransaction(userId?: string, data?: Partial<any>) {
+  const user = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : await createUser();
+  })();
+
+  return await prisma.transaction.create({
+    data: {
+      userId: user.id,
+      type: randomElement(['discount_usage', 'course_enrollment', 'event_registration']),
+      amount: randomInt(10000, 500000),
+      currency: 'UZS',
+      paymentMethod: randomElement(['payme', 'click', 'uzcard', 'humo']),
+      paymentProvider: randomElement(['payme', 'click']),
+      externalTransactionId: `EXT${randomInt(100000, 999999)}`,
+      status: randomElement(['pending', 'completed', 'failed']),
+      completedAt: randomBoolean(0.8) ? new Date() : null,
+      ...data,
+    },
+  });
+}
+
+/**
+ * Analytics Event Factory
+ */
+export async function createAnalyticsEvent(userId?: string, data?: Partial<any>) {
+  const user: { id: string } | null = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : null;
+  })();
+
+  return await prisma.analyticsEvent.create({
+    data: {
+      userId: user?.id,
+      eventName: randomElement(['page_view', 'discount_view', 'discount_click', 'job_view']),
+      eventCategory: randomElement(['engagement', 'conversion', 'navigation']),
+      eventLabel: randomElement(['home_page', 'discounts_page', 'jobs_page']),
+      eventValue: randomInt(1, 100),
+      pageUrl: '/discounts',
+      deviceType: randomElement(['mobile', 'desktop', 'tablet']),
+      browser: randomElement(['Chrome', 'Safari', 'Firefox']),
+      os: randomElement(['Windows', 'MacOS', 'iOS', 'Android']),
+      ...data,
+    },
+  });
+}
+
+/**
+ * Saved Item Factory
+ */
+export async function createSavedItem(userId?: string, data?: Partial<any>) {
+  const user = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : await createUser();
+  })();
+
+  const saveableType = randomElement(['Discount', 'Job', 'Event', 'Course']);
+  const saveableId = `${randomInt(1, 100)}`;
+
+  return await prisma.savedItem.create({
+    data: {
+      userId: user.id,
+      saveableType,
+      saveableId,
+      ...data,
+    },
+  });
+}
+
+/**
+ * Admin Log Factory
+ */
+export async function createAdminLog(adminId?: string, data?: Partial<any>) {
+  const admin = adminId ? { id: adminId } : await (async () => {
+    const admins = await prisma.user.findMany({ where: { role: 'admin' } });
+    return admins.length > 0 ? randomElement(admins) : await createUser({ role: 'admin' });
+  })();
+
+  return await prisma.adminLog.create({
+    data: {
+      adminId: admin.id,
+      action: randomElement(['create', 'update', 'delete', 'approve']),
+      resourceType: randomElement(['User', 'Discount', 'Brand', 'Job']),
+      resourceId: `${randomInt(1, 100)}`,
+      oldValues: { status: 'pending' },
+      newValues: { status: 'approved' },
+      ...data,
+    },
+  });
+}
+
+/**
+ * Subscription Factory
+ */
+export async function createSubscription(userId?: string, data?: Partial<any>) {
+  const user = userId ? { id: userId } : await (async () => {
+    const users = await prisma.user.findMany();
+    return users.length > 0 ? randomElement(users) : await createUser();
+  })();
+
+  const startDate = new Date();
+  const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  return await prisma.subscription.create({
+    data: {
+      userId: user.id,
+      planName: randomElement(['basic', 'premium', 'enterprise']),
+      price: randomInt(50000, 200000),
+      startDate,
+      endDate,
+      status: randomElement(['active', 'cancelled', 'expired']),
+      autoRenew: randomBoolean(0.7),
+      nextBillingDate: endDate,
       ...data,
     },
   });
