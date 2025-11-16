@@ -149,6 +149,11 @@ jobs:
       name: production
       url: http://3.121.174.54:3030
 
+    # Note: Using custom ports to avoid conflicts with other projects
+    # Postgres: 5433 (instead of 5432)
+    # Redis: 6380 (instead of 6379)
+    # Backend: 3030 (external)
+
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.0
@@ -169,11 +174,11 @@ jobs:
             DB_USER=talabahub
             DB_PASSWORD=talabahub_secure_password_change_me
             DB_NAME=talabahub
-            DB_PORT=5432
+            DB_PORT=5433
 
             # Redis
             REDIS_PASSWORD=redis_secure_password_change_me
-            REDIS_PORT=6379
+            REDIS_PORT=6380
 
             # JWT Secrets (CHANGE THESE!)
             JWT_ACCESS_SECRET=change_this_to_random_secret_key_min_32_chars
@@ -204,22 +209,11 @@ jobs:
             # Create logs directory
             mkdir -p logs
 
-            # Stop and remove ALL old containers to free up ports
+            # Stop and remove only our containers (won't affect other projects)
             echo "🧹 Cleaning up old containers..."
             docker stop talabahub-backend talabahub-postgres talabahub-redis 2>/dev/null || true
             docker rm talabahub-backend talabahub-postgres talabahub-redis 2>/dev/null || true
             docker compose -f docker-compose.prod.yml down 2>/dev/null || true
-
-            # Kill any process using ports 5432 and 6379
-            echo "🔍 Checking for processes using ports 5432 and 6379..."
-            sudo lsof -ti:5432 | xargs -r sudo kill -9 2>/dev/null || true
-            sudo lsof -ti:6379 | xargs -r sudo kill -9 2>/dev/null || true
-
-            # Double check - stop ANY container using these ports
-            docker ps -q --filter "publish=5432" | xargs -r docker stop 2>/dev/null || true
-            docker ps -q --filter "publish=6379" | xargs -r docker stop 2>/dev/null || true
-
-            sleep 2
 
             # Create docker-compose.prod.yml
             cat > docker-compose.prod.yml << 'EOF'
