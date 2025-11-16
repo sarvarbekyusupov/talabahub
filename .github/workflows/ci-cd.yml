@@ -328,6 +328,9 @@ jobs:
             echo "📄 Seed output:"
             cat /tmp/seed.log || echo "No seed log available"
 
+            echo "🔍 Checking database for users..."
+            docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub -c "SELECT email, \"firstName\", \"lastName\", role, \"isActive\", \"isEmailVerified\" FROM \"User\" LIMIT 5;" || echo "Failed to query database"
+
             echo "📝 Recent logs:"
             docker compose -f docker-compose.prod.yml logs --tail=50 backend
 
