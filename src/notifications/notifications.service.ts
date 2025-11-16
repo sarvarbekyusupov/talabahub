@@ -126,10 +126,10 @@ export class NotificationsService {
   // Helper method to send job alert notifications
   async sendJobAlert(userId: string, job: any) {
     return this.create(userId, {
-      type: 'job_alert' as any,
+      type: 'in_app',
       title: 'New Job Matching Your Criteria',
       message: `A new job "${job.title}" has been posted that matches your saved search.`,
-      data: { jobId: job.id },
+      data: { jobId: job.id, category: 'job_alert' },
       actionUrl: `/jobs/${job.id}`,
       actionLabel: 'View Job',
     });
@@ -146,10 +146,10 @@ export class NotificationsService {
     };
 
     return this.create(userId, {
-      type: 'job_application_status' as any,
+      type: 'in_app',
       title: 'Application Status Update',
       message: statusMessages[application.status] || 'Your application status has been updated',
-      data: { applicationId: application.id, jobId: application.jobId },
+      data: { applicationId: application.id, jobId: application.jobId, category: 'job_application_status' },
       actionUrl: `/jobs/applications/${application.id}`,
       actionLabel: 'View Application',
     });

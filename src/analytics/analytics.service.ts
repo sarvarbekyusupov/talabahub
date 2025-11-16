@@ -42,17 +42,15 @@ export class AnalyticsService {
       select: {
         id: true,
         title: true,
-        viewCount: true,
         enrollmentCount: true,
-        isPublished: true,
+        isActive: true,
         createdAt: true,
       },
     });
 
     const courseStats = {
       total: courses.length,
-      published: courses.filter((c) => c.isPublished).length,
-      totalViews: courses.reduce((sum, c) => sum + c.viewCount, 0),
+      active: courses.filter((c) => c.isActive).length,
       totalEnrollments: courses.reduce((sum, c) => sum + c.enrollmentCount, 0),
     };
 
@@ -300,7 +298,7 @@ export class AnalyticsService {
         where: { ...where, endDate: { lt: new Date() } },
       }),
       this.prisma.event.groupBy({
-        by: ['type'],
+        by: ['eventType'],
         where,
         _count: true,
         _sum: {
