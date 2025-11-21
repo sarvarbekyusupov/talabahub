@@ -34,8 +34,67 @@ enum DiscountType {
   percentage
   fixed_amount
   promo_code
+  buy_one_get_one
+  free_item
+  cashback
 
   @@map("discount_type")
+}
+
+enum UsageLimitType {
+  one_time
+  daily
+  weekly
+  monthly
+  unlimited
+
+  @@map("usage_limit_type")
+}
+
+enum ClaimStatus {
+  pending
+  claimed
+  redeemed
+  expired
+  cancelled
+
+  @@map("claim_status")
+}
+
+enum DiscountApprovalStatus {
+  pending
+  approved
+  rejected
+  suspended
+
+  @@map("discount_approval_status")
+}
+
+enum VerificationMethod {
+  promo_code
+  qr_code
+  student_card
+  auto
+
+  @@map("verification_method")
+}
+
+enum FraudAlertType {
+  multiple_accounts
+  unusual_pattern
+  location_mismatch
+  suspicious_activity
+
+  @@map("fraud_alert_type")
+}
+
+enum FraudAlertStatus {
+  pending
+  investigating
+  confirmed
+  dismissed
+
+  @@map("fraud_alert_status")
 }
 
 enum JobType {
@@ -157,6 +216,8 @@ model User {
   referrer                User?                    @relation("UserReferrals", fields: [referredBy], references: [id], onDelete: SetNull)
   referrals               User[]                   @relation("UserReferrals")
   discountUsages          DiscountUsage[]
+  discountClaims          DiscountClaim[]
+  fraudAlerts             FraudAlert[]
   jobApplications         JobApplication[]
   courseEnrollments       CourseEnrollment[]
   reviews                 Review[]
@@ -237,43 +298,110 @@ model Brand {
 }
 
 model Discount {
-  id                  String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  brandId             Int            @map("brand_id")
-  categoryId          Int?           @map("category_id")
-  title               String         @db.VarChar(255)
-  description         String?        @db.Text
-  termsAndConditions  String?        @map("terms_and_conditions") @db.Text
-  howToUse            String?        @map("how_to_use") @db.Text
-  imageUrl            String?        @map("image_url") @db.VarChar(500)
-  discountType        DiscountType   @map("discount_type")
-  discountValue       Decimal        @map("discount_value") @db.Decimal(10, 2)
-  minPurchaseAmount   Decimal?       @map("min_purchase_amount") @db.Decimal(10, 2)
-  maxDiscountAmount   Decimal?       @map("max_discount_amount") @db.Decimal(10, 2)
-  promoCode           String?        @map("promo_code") @db.VarChar(50)
-  startDate           DateTime       @map("start_date")
-  endDate             DateTime       @map("end_date")
-  usageLimitPerUser   Int            @default(1) @map("usage_limit_per_user")
-  totalUsageLimit     Int?           @map("total_usage_limit")
-  currentUsageCount   Int            @default(0) @map("current_usage_count")
-  universityIds       Int[]          @map("university_ids")
-  minCourseYear       Int?           @map("min_course_year")
-  isActive            Boolean        @default(true) @map("is_active")
-  isFeatured          Boolean        @default(false) @map("is_featured")
-  isExclusive         Boolean        @default(false) @map("is_exclusive")
-  viewCount           Int            @default(0) @map("view_count")
-  clickCount          Int            @default(0) @map("click_count")
-  conversionRate      Decimal        @default(0.00) @map("conversion_rate") @db.Decimal(5, 2)
-  createdAt           DateTime       @default(now()) @map("created_at")
-  updatedAt           DateTime       @updatedAt @map("updated_at")
+  id                  String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brandId             Int                     @map("brand_id")
+  categoryId          Int?                    @map("category_id")
+  title               String                  @db.VarChar(255)
+  description         String?                 @db.Text
+  termsAndConditions  String?                 @map("terms_and_conditions") @db.Text
+  howToUse            String?                 @map("how_to_use") @db.Text
+  imageUrl            String?                 @map("image_url") @db.VarChar(500)
+  discountType        DiscountType            @map("discount_type")
+  discountValue       Decimal                 @map("discount_value") @db.Decimal(10, 2)
+  minPurchaseAmount   Decimal?                @map("min_purchase_amount") @db.Decimal(10, 2)
+  maxDiscountAmount   Decimal?                @map("max_discount_amount") @db.Decimal(10, 2)
+  promoCode           String?                 @map("promo_code") @db.VarChar(50)
+  startDate           DateTime                @map("start_date")
+  endDate             DateTime                @map("end_date")
+  usageLimitPerUser   Int                     @default(1) @map("usage_limit_per_user")
+  totalUsageLimit     Int?                    @map("total_usage_limit")
+  currentUsageCount   Int                     @default(0) @map("current_usage_count")
+  universityIds       Int[]                   @map("university_ids")
+  minCourseYear       Int?                    @map("min_course_year")
+  isActive            Boolean                 @default(true) @map("is_active")
+  isFeatured          Boolean                 @default(false) @map("is_featured")
+  isExclusive         Boolean                 @default(false) @map("is_exclusive")
+  viewCount           Int                     @default(0) @map("view_count")
+  clickCount          Int                     @default(0) @map("click_count")
+  conversionRate      Decimal                 @default(0.00) @map("conversion_rate") @db.Decimal(5, 2)
+  createdAt           DateTime                @default(now()) @map("created_at")
+  updatedAt           DateTime                @updatedAt @map("updated_at")
 
-  brand               Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  category            Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  // New fields for extended discount system
+  usageLimitType      UsageLimitType          @default(one_time) @map("usage_limit_type")
+  dailyClaimLimit     Int?                    @map("daily_claim_limit")
+  weeklyClaimLimit    Int?                    @map("weekly_claim_limit")
+  monthlyClaimLimit   Int?                    @map("monthly_claim_limit")
+
+  // BOGO and Free Item fields
+  bogoProductName     String?                 @map("bogo_product_name") @db.VarChar(255)
+  freeItemName        String?                 @map("free_item_name") @db.VarChar(255)
+  freeItemValue       Decimal?                @map("free_item_value") @db.Decimal(10, 2)
+
+  // Cashback fields
+  cashbackPercentage  Decimal?                @map("cashback_percentage") @db.Decimal(5, 2)
+  maxCashbackAmount   Decimal?                @map("max_cashback_amount") @db.Decimal(10, 2)
+  cashbackDelayDays   Int?                    @map("cashback_delay_days")
+
+  // Time restrictions
+  activeTimeStart     String?                 @map("active_time_start") @db.VarChar(5) // HH:mm
+  activeTimeEnd       String?                 @map("active_time_end") @db.VarChar(5)   // HH:mm
+  activeDaysOfWeek    Int[]                   @map("active_days_of_week") // 0-6 (Sunday-Saturday)
+
+  // Targeting
+  isFirstTimeOnly     Boolean                 @default(false) @map("is_first_time_only")
+  isReferralBonus     Boolean                 @default(false) @map("is_referral_bonus")
+  referralBonusValue  Decimal?                @map("referral_bonus_value") @db.Decimal(10, 2)
+  specificProducts    String[]                @map("specific_products")
+
+  // Location restrictions
+  allowedCities       String[]                @map("allowed_cities")
+  allowedRegions      String[]                @map("allowed_regions")
+  requiresLocation    Boolean                 @default(false) @map("requires_location")
+  locationRadius      Int?                    @map("location_radius") // in meters
+  locationLat         Decimal?                @map("location_lat") @db.Decimal(10, 7)
+  locationLng         Decimal?                @map("location_lng") @db.Decimal(10, 7)
+
+  // Approval workflow
+  approvalStatus      DiscountApprovalStatus  @default(pending) @map("approval_status")
+  approvedAt          DateTime?               @map("approved_at")
+  approvedBy          String?                 @map("approved_by") @db.Uuid
+  rejectionReason     String?                 @map("rejection_reason") @db.Text
+
+  // Verification method
+  verificationMethod  VerificationMethod      @default(promo_code) @map("verification_method")
+  claimExpiryHours    Int                     @default(24) @map("claim_expiry_hours")
+  requiresPartnerVerification Boolean         @default(true) @map("requires_partner_verification")
+
+  // Analytics
+  totalClaimsCount    Int                     @default(0) @map("total_claims_count")
+  totalRedemptions    Int                     @default(0) @map("total_redemptions")
+  totalSavingsGenerated Decimal               @default(0) @map("total_savings_generated") @db.Decimal(12, 2)
+  avgTransactionAmount Decimal?               @map("avg_transaction_amount") @db.Decimal(10, 2)
+
+  // Monetization
+  listingFee          Decimal?                @map("listing_fee") @db.Decimal(10, 2)
+  performanceFee      Decimal?                @map("performance_fee") @db.Decimal(10, 2)
+  featuredPlacementFee Decimal?               @map("featured_placement_fee") @db.Decimal(10, 2)
+
+  // Seasonal/Dynamic
+  seasonalTag         String?                 @map("seasonal_tag") @db.VarChar(50)
+  priorityScore       Int                     @default(0) @map("priority_score")
+
+  brand               Brand                   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category            Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   usages              DiscountUsage[]
+  claims              DiscountClaim[]
+  fraudAlerts         FraudAlert[]
 
   @@index([brandId])
   @@index([categoryId])
   @@index([startDate, endDate])
   @@index([promoCode])
+  @@index([approvalStatus])
+  @@index([isActive, approvalStatus])
+  @@index([allowedCities])
+  @@index([seasonalTag])
   @@map("discounts")
 }
 
@@ -297,6 +425,149 @@ model DiscountUsage {
   @@index([discountId])
   @@index([userId])
   @@map("discount_usages")
+}
+
+model DiscountClaim {
+  id                String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  discountId        String        @map("discount_id") @db.Uuid
+  userId            String        @map("user_id") @db.Uuid
+
+  // Generated codes
+  claimCode         String        @unique @map("claim_code") @db.VarChar(20)
+  qrCode            String?       @map("qr_code") @db.Text
+
+  // Status tracking
+  status            ClaimStatus   @default(claimed)
+  claimedAt         DateTime      @default(now()) @map("claimed_at")
+  expiresAt         DateTime      @map("expires_at")
+  redeemedAt        DateTime?     @map("redeemed_at")
+  cancelledAt       DateTime?     @map("cancelled_at")
+
+  // Verification
+  verifiedBy        String?       @map("verified_by") @db.Uuid
+  verificationNotes String?       @map("verification_notes") @db.Text
+
+  // Transaction details
+  transactionAmount Decimal?      @map("transaction_amount") @db.Decimal(10, 2)
+  discountAmount    Decimal?      @map("discount_amount") @db.Decimal(10, 2)
+  cashbackAmount    Decimal?      @map("cashback_amount") @db.Decimal(10, 2)
+  cashbackPaidAt    DateTime?     @map("cashback_paid_at")
+
+  // Device tracking
+  ipAddress         String?       @map("ip_address") @db.Inet
+  userAgent         String?       @map("user_agent") @db.Text
+  deviceType        String?       @map("device_type") @db.VarChar(50)
+  deviceId          String?       @map("device_id") @db.VarChar(255)
+
+  // Location
+  claimLat          Decimal?      @map("claim_lat") @db.Decimal(10, 7)
+  claimLng          Decimal?      @map("claim_lng") @db.Decimal(10, 7)
+  redeemLat         Decimal?      @map("redeem_lat") @db.Decimal(10, 7)
+  redeemLng         Decimal?      @map("redeem_lng") @db.Decimal(10, 7)
+
+  discount          Discount      @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([discountId])
+  @@index([userId])
+  @@index([claimCode])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("discount_claims")
+}
+
+model FraudAlert {
+  id              String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId          String?          @map("user_id") @db.Uuid
+  discountId      String?          @map("discount_id") @db.Uuid
+
+  alertType       FraudAlertType   @map("alert_type")
+  status          FraudAlertStatus @default(pending)
+
+  // Alert details
+  description     String           @db.Text
+  severity        Int              @default(1) // 1-5
+  evidence        Json?            // Store relevant data
+
+  // Device/IP info
+  ipAddress       String?          @map("ip_address") @db.Inet
+  deviceId        String?          @map("device_id") @db.VarChar(255)
+  userAgent       String?          @map("user_agent") @db.Text
+
+  // Investigation
+  investigatedBy  String?          @map("investigated_by") @db.Uuid
+  investigatedAt  DateTime?        @map("investigated_at")
+  resolution      String?          @db.Text
+  actionTaken     String?          @map("action_taken") @db.VarChar(100)
+
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  discount        Discount?        @relation(fields: [discountId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([discountId])
+  @@index([status])
+  @@index([alertType])
+  @@map("fraud_alerts")
+}
+
+model PartnerAnalytics {
+  id                   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brandId              Int      @map("brand_id")
+  date                 DateTime @db.Date
+
+  // Daily metrics
+  totalViews           Int      @default(0) @map("total_views")
+  totalClicks          Int      @default(0) @map("total_clicks")
+  totalClaims          Int      @default(0) @map("total_claims")
+  totalRedemptions     Int      @default(0) @map("total_redemptions")
+  totalRevenue         Decimal  @default(0) @map("total_revenue") @db.Decimal(12, 2)
+  totalCommission      Decimal  @default(0) @map("total_commission") @db.Decimal(10, 2)
+
+  // Conversion metrics
+  claimRate            Decimal  @default(0) @map("claim_rate") @db.Decimal(5, 2)
+  redemptionRate       Decimal  @default(0) @map("redemption_rate") @db.Decimal(5, 2)
+
+  // Demographics
+  topUniversities      Json?    @map("top_universities")
+  topCategories        Json?    @map("top_categories")
+  peakHours            Json?    @map("peak_hours")
+
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@unique([brandId, date])
+  @@index([brandId])
+  @@index([date])
+  @@map("partner_analytics")
+}
+
+model StudentAnalytics {
+  id                   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId               String   @map("user_id") @db.Uuid
+  month                DateTime @db.Date // First day of month
+
+  // Monthly metrics
+  totalDiscountsClaimed Int     @default(0) @map("total_discounts_claimed")
+  totalDiscountsRedeemed Int    @default(0) @map("total_discounts_redeemed")
+  totalSavings         Decimal  @default(0) @map("total_savings") @db.Decimal(10, 2)
+  totalCashback        Decimal  @default(0) @map("total_cashback") @db.Decimal(10, 2)
+  totalSpent           Decimal  @default(0) @map("total_spent") @db.Decimal(10, 2)
+
+  // Preferences
+  topCategories        Json?    @map("top_categories")
+  topBrands            Json?    @map("top_brands")
+  avgDiscountValue     Decimal? @map("avg_discount_value") @db.Decimal(5, 2)
+
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, month])
+  @@index([userId])
+  @@index([month])
+  @@map("student_analytics")
 }
 
 model Company {
