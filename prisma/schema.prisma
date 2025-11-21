@@ -151,6 +151,87 @@ enum PaymentStatus {
   @@map("payment_status")
 }
 
+// Blog/Content System Enums
+enum ArticleStatus {
+  draft
+  pending
+  published
+  rejected
+
+  @@map("article_status")
+}
+
+enum ContentBlockType {
+  paragraph
+  heading
+  image
+  code
+  quote
+  list
+  embed
+
+  @@map("content_block_type")
+}
+
+enum TagCategory {
+  study
+  career
+  life
+  tech
+  personal
+
+  @@map("tag_category")
+}
+
+enum BlogNotificationType {
+  new_follower
+  article_clapped
+  new_response
+  response_clapped
+  milestone
+  featured
+
+  @@map("blog_notification_type")
+}
+
+enum SharePlatform {
+  telegram
+  whatsapp
+  facebook
+  twitter
+  copy_link
+  instagram
+
+  @@map("share_platform")
+}
+
+enum ReportReason {
+  spam
+  inappropriate
+  harassment
+  plagiarism
+  other
+
+  @@map("report_reason")
+}
+
+enum ReportStatus {
+  pending
+  reviewed
+  resolved
+  dismissed
+
+  @@map("report_status")
+}
+
+enum DeviceType {
+  mobile
+  desktop
+  tablet
+
+  @@map("device_type")
+}
+
 // ============================================
 // Models
 // ============================================
@@ -231,6 +312,24 @@ model User {
   adminLogs               AdminLog[]
   subscriptions           Subscription[]
   savedSearches           SavedSearch[]
+
+  // Blog/Content System Relations
+  studentProfile          StudentProfile?
+  articles                Article[]        @relation("ArticleAuthor")
+  claps                   Clap[]           @relation("UserClaps")
+  responses               Response[]       @relation("UserResponses")
+  responseClaps           ResponseClap[]   @relation("UserResponseClaps")
+  bookmarks               Bookmark[]       @relation("UserBookmarks")
+  bookmarkCollections     BookmarkCollection[] @relation("UserBookmarkCollections")
+  followers               Follow[]         @relation("UserFollowing")
+  following               Follow[]         @relation("UserFollowers")
+  blogNotifications       BlogNotification[] @relation("UserBlogNotifications")
+  actorNotifications      BlogNotification[] @relation("ActorBlogNotifications")
+  articleViews            ArticleView[]    @relation("UserArticleViews")
+  shares                  Share[]          @relation("UserShares")
+  reportsMade             Report[]         @relation("ReportReporter")
+  reportsReviewed         Report[]         @relation("ReportReviewer")
+  drafts                  Draft[]          @relation("UserDrafts")
 
   @@index([email])
   @@index([phone])
@@ -996,4 +1095,322 @@ model SavedSearch {
   @@index([userId])
   @@index([type])
   @@map("saved_searches")
+}
+
+// ============================================
+// Blog/Content System Models
+// ============================================
+
+model StudentProfile {
+  id                    String   @id @map("user_id") @db.Uuid
+  bio                   String?  @db.VarChar(160)
+  graduationYear        Int?     @map("graduation_year")
+  fieldOfStudy          String?  @map("field_of_study") @db.VarChar(255)
+  socialLinks           Json?    @map("social_links") // { telegram, github, linkedin }
+  totalArticles         Int      @default(0) @map("total_articles")
+  totalClapsReceived    Int      @default(0) @map("total_claps_received")
+  totalFollowers        Int      @default(0) @map("total_followers")
+  totalFollowing        Int      @default(0) @map("total_following")
+  reputationScore       Int      @default(0) @map("reputation_score")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user                  User     @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  @@map("student_profiles")
+}
+
+model Article {
+  id                String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  authorId          String        @map("author_id") @db.Uuid
+  title             String        @db.VarChar(200)
+  subtitle          String?       @db.VarChar(300)
+  slug              String        @unique @db.VarChar(255)
+  content           Json          // Rich text structure
+  featuredImageUrl  String?       @map("featured_image_url") @db.VarChar(500)
+  readingTimeMinutes Int          @default(0) @map("reading_time_minutes")
+  wordCount         Int           @default(0) @map("word_count")
+  status            ArticleStatus @default(draft)
+  rejectionReason   String?       @map("rejection_reason") @db.Text
+  publishedAt       DateTime?     @map("published_at")
+  featured          Boolean       @default(false)
+  featuredAt        DateTime?     @map("featured_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  author            User          @relation("ArticleAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  contentBlocks     ArticleContent[]
+  stats             ArticleStats?
+  claps             Clap[]
+  responses         Response[]
+  bookmarks         Bookmark[]
+  views             ArticleView[]
+  shares            Share[]
+  tags              ArticleTag[]
+
+  @@index([authorId])
+  @@index([status, publishedAt])
+  @@index([slug])
+  @@index([featured])
+  @@map("articles")
+}
+
+model ArticleContent {
+  id          String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  articleId   String           @map("article_id") @db.Uuid
+  blockType   ContentBlockType @map("block_type")
+  content     Json             // Block-specific content
+  position    Int              @default(0)
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  article     Article          @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+  @@map("article_contents")
+}
+
+model ArticleStats {
+  articleId         String   @id @map("article_id") @db.Uuid
+  viewsCount        Int      @default(0) @map("views_count")
+  uniqueViewsCount  Int      @default(0) @map("unique_views_count")
+  clapsCount        Int      @default(0) @map("claps_count")
+  uniqueClappers    Int      @default(0) @map("unique_clappers")
+  responsesCount    Int      @default(0) @map("responses_count")
+  bookmarksCount    Int      @default(0) @map("bookmarks_count")
+  sharesCount       Int      @default(0) @map("shares_count")
+  readRatio         Decimal  @default(0) @map("read_ratio") @db.Decimal(3, 2)
+  avgReadTimeSeconds Int     @default(0) @map("avg_read_time_seconds")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  article           Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@map("article_stats")
+}
+
+model Clap {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  articleId   String   @map("article_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  clapCount   Int      @default(1) @map("clap_count") // 1-50
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user        User     @relation("UserClaps", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, userId])
+  @@index([articleId])
+  @@index([userId])
+  @@map("claps")
+}
+
+model Response {
+  id                     String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  articleId              String         @map("article_id") @db.Uuid
+  authorId               String         @map("author_id") @db.Uuid
+  parentResponseId       String?        @map("parent_response_id") @db.Uuid
+  content                Json           // Rich text content
+  highlightedText        String?        @map("highlighted_text") @db.Text
+  highlightPositionStart Int?           @map("highlight_position_start")
+  highlightPositionEnd   Int?           @map("highlight_position_end")
+  isEdited               Boolean        @default(false) @map("is_edited")
+  clapsCount             Int            @default(0) @map("claps_count")
+  repliesCount           Int            @default(0) @map("replies_count")
+  isReported             Boolean        @default(false) @map("is_reported")
+  reportCount            Int            @default(0) @map("report_count")
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+
+  article                Article        @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author                 User           @relation("UserResponses", fields: [authorId], references: [id], onDelete: Cascade)
+  parentResponse         Response?      @relation("ResponseReplies", fields: [parentResponseId], references: [id], onDelete: Cascade)
+  replies                Response[]     @relation("ResponseReplies")
+  claps                  ResponseClap[]
+
+  @@index([articleId])
+  @@index([authorId])
+  @@index([parentResponseId])
+  @@map("responses")
+}
+
+model ResponseClap {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  responseId  String   @map("response_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  clapCount   Int      @default(1) @map("clap_count") // 1-50
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  response    Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  user        User     @relation("UserResponseClaps", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([responseId, userId])
+  @@index([responseId])
+  @@index([userId])
+  @@map("response_claps")
+}
+
+model Bookmark {
+  id           String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId       String              @map("user_id") @db.Uuid
+  articleId    String              @map("article_id") @db.Uuid
+  collectionId String?             @map("collection_id") @db.Uuid
+  createdAt    DateTime            @default(now()) @map("created_at")
+
+  user         User                @relation("UserBookmarks", fields: [userId], references: [id], onDelete: Cascade)
+  article      Article             @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  collection   BookmarkCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, articleId])
+  @@index([userId])
+  @@index([articleId])
+  @@index([collectionId])
+  @@map("bookmarks")
+}
+
+model BookmarkCollection {
+  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId       String     @map("user_id") @db.Uuid
+  name         String     @db.VarChar(100)
+  description  String?    @db.Text
+  articleCount Int        @default(0) @map("article_count")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  user         User       @relation("UserBookmarkCollections", fields: [userId], references: [id], onDelete: Cascade)
+  bookmarks    Bookmark[]
+
+  @@index([userId])
+  @@map("bookmark_collections")
+}
+
+model Follow {
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  follower    User     @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+model Tag {
+  id           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name         String      @unique @db.VarChar(100)
+  slug         String      @unique @db.VarChar(100)
+  category     TagCategory
+  articleCount Int         @default(0) @map("article_count")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  articles     ArticleTag[]
+
+  @@index([slug])
+  @@index([category])
+  @@map("tags")
+}
+
+model ArticleTag {
+  articleId String  @map("article_id") @db.Uuid
+  tagId     String  @map("tag_id") @db.Uuid
+
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([articleId])
+  @@index([tagId])
+  @@map("article_tags")
+}
+
+model BlogNotification {
+  id          String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId      String               @map("user_id") @db.Uuid
+  type        BlogNotificationType
+  actorId     String?              @map("actor_id") @db.Uuid
+  entityType  String               @map("entity_type") @db.VarChar(50) // article, response, user
+  entityId    String               @map("entity_id") @db.Uuid
+  message     String               @db.Text
+  isRead      Boolean              @default(false) @map("is_read")
+  createdAt   DateTime             @default(now()) @map("created_at")
+
+  user        User                 @relation("UserBlogNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  actor       User?                @relation("ActorBlogNotifications", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead])
+  @@index([actorId])
+  @@map("blog_notifications")
+}
+
+model ArticleView {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  articleId       String   @map("article_id") @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  sessionId       String   @map("session_id") @db.VarChar(255)
+  readPercentage  Int      @default(0) @map("read_percentage")
+  timeSpentSeconds Int     @default(0) @map("time_spent_seconds")
+  referrer        String?  @db.VarChar(500)
+  deviceType      String?  @map("device_type") @db.VarChar(20)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  article         Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user            User?    @relation("UserArticleViews", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([articleId])
+  @@index([userId])
+  @@index([sessionId])
+  @@map("article_views")
+}
+
+model Share {
+  id        String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  articleId String        @map("article_id") @db.Uuid
+  userId    String        @map("user_id") @db.Uuid
+  platform  SharePlatform
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  article   Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user      User          @relation("UserShares", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+  @@index([userId])
+  @@map("shares")
+}
+
+model Report {
+  id          String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  reporterId  String       @map("reporter_id") @db.Uuid
+  entityType  String       @map("entity_type") @db.VarChar(50) // article, response
+  entityId    String       @map("entity_id") @db.Uuid
+  reason      ReportReason
+  description String?      @db.Text
+  status      ReportStatus @default(pending)
+  reviewedBy  String?      @map("reviewed_by") @db.Uuid
+  actionTaken String?      @map("action_taken") @db.Text
+  createdAt   DateTime     @default(now()) @map("created_at")
+  reviewedAt  DateTime?    @map("reviewed_at")
+
+  reporter    User         @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer    User?        @relation("ReportReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([reporterId])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@map("reports")
+}
+
+model Draft {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  authorId    String   @map("author_id") @db.Uuid
+  title       String?  @db.VarChar(200)
+  content     Json?
+  lastSavedAt DateTime @default(now()) @map("last_saved_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  author      User     @relation("UserDrafts", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@map("drafts")
 }
