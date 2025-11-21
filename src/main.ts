@@ -80,10 +80,12 @@ async function start() {
 
     app.enableCors({
       origin: (origin, callback) => {
-        // Allow localhost ports 3000-3005 for development
-        const localhostPattern = /^http:\/\/localhost:(300[0-5])$/;
+        // Allow localhost ports 3000-3005 and 5173-5175 for development
+        const localhostPattern = /^http:\/\/localhost:(300[0-5]|517[3-5])$/;
 
         const allowedOrigins = [
+          "http://3.69.242.100:3000",
+          "http://3.69.242.100:3030",
           "https://jafaiumss.vercel.app",
           "https://jafa-iums.vercel.app",
           "https://iumsjafaenergy.vercel.app",
