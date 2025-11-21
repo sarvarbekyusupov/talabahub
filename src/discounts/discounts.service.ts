@@ -786,7 +786,7 @@ export class DiscountsService {
     }
 
     // Check time restrictions
-    if (!this.isWithinActiveHours(discount.activeTimeStart, discount.activeTimeEnd)) {
+    if (!this.isWithinActiveHours(discount.activeTimeStart ?? undefined, discount.activeTimeEnd ?? undefined)) {
       return {
         canClaim: false,
         reason: `Discount is only active between ${discount.activeTimeStart} and ${discount.activeTimeEnd}`,
