@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDiscountDto } from './dto/create-discount.dto';
 import { UpdateDiscountDto } from './dto/update-discount.dto';
-import { ClaimDiscountDto, RedeemClaimDto, DiscountFilterDto } from './dto/claim-discount.dto';
+import { ClaimDiscountDto, RedeemClaimDto } from './dto/claim-discount.dto';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -890,11 +890,12 @@ export class DiscountsService {
       case 'daily':
         startDate = new Date(now.setHours(0, 0, 0, 0));
         break;
-      case 'weekly':
+      case 'weekly': {
         const dayOfWeek = now.getDay();
         startDate = new Date(now.setDate(now.getDate() - dayOfWeek));
         startDate.setHours(0, 0, 0, 0);
         break;
+      }
       case 'monthly':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         break;

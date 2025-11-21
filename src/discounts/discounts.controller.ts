@@ -8,7 +8,6 @@ import {
   Delete,
   UseGuards,
   Query,
-  Req,
   Ip,
   Headers,
 } from '@nestjs/common';
@@ -21,7 +20,6 @@ import {
   RedeemClaimDto,
   ApproveDiscountDto,
   RejectDiscountDto,
-  FraudAlertActionDto,
 } from './dto/claim-discount.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
