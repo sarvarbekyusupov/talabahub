@@ -30,6 +30,7 @@ import { SearchModule } from './search/search.module';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { BlogContentModule } from './blog-content/blog-content.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -74,6 +75,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     SavedSearchesModule,
     NotificationsModule,
     AnalyticsModule,
+    BlogContentModule,
   ],
   controllers: [AppController],
   providers: [
