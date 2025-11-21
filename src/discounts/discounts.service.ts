@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException, BadRequestException }
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateDiscountDto } from './dto/create-discount.dto';
 import { UpdateDiscountDto } from './dto/update-discount.dto';
-import { ClaimDiscountDto, RedeemClaimDto } from './dto/claim-discount.dto';
+import { ClaimDiscountDto, RedeemClaimDto, FraudAlertActionDto } from './dto/claim-discount.dto';
 import { randomBytes } from 'crypto';
 
 @Injectable()
@@ -741,6 +741,44 @@ export class DiscountsService {
     };
   }
 
+  async cancelClaim(claimId: string, userId: string) {
+    const claim = await this.prisma.discountClaim.findUnique({
+      where: { id: claimId },
+    });
+
+    if (!claim) {
+      throw new NotFoundException('Claim not found');
+    }
+
+    if (claim.userId !== userId) {
+      throw new BadRequestException('You can only cancel your own claims');
+    }
+
+    if (claim.status !== 'claimed') {
+      throw new BadRequestException(`Cannot cancel claim with status: ${claim.status}`);
+    }
+
+    const updatedClaim = await this.prisma.discountClaim.update({
+      where: { id: claimId },
+      data: {
+        status: 'cancelled',
+      },
+    });
+
+    // Decrement the discount's claim count
+    await this.prisma.discount.update({
+      where: { id: claim.discountId },
+      data: {
+        totalClaimsCount: { decrement: 1 },
+      },
+    });
+
+    return {
+      claim: updatedClaim,
+      message: 'Claim cancelled successfully',
+    };
+  }
+
   // ================================
   // ELIGIBILITY CHECK METHODS
   // ================================
@@ -1162,6 +1200,64 @@ export class DiscountsService {
     };
   }
 
+  async pauseDiscount(discountId: string) {
+    const discount = await this.prisma.discount.findUnique({
+      where: { id: discountId },
+    });
+
+    if (!discount) {
+      throw new NotFoundException('Discount not found');
+    }
+
+    if (!discount.isActive) {
+      throw new BadRequestException('Discount is already paused/inactive');
+    }
+
+    const updated = await this.prisma.discount.update({
+      where: { id: discountId },
+      data: {
+        isActive: false,
+      },
+    });
+
+    return {
+      discount: updated,
+      message: 'Discount paused successfully',
+    };
+  }
+
+  async resumeDiscount(discountId: string) {
+    const discount = await this.prisma.discount.findUnique({
+      where: { id: discountId },
+    });
+
+    if (!discount) {
+      throw new NotFoundException('Discount not found');
+    }
+
+    if (discount.isActive) {
+      throw new BadRequestException('Discount is already active');
+    }
+
+    // Check if discount is still valid
+    const now = new Date();
+    if (discount.endDate < now) {
+      throw new BadRequestException('Cannot resume expired discount');
+    }
+
+    const updated = await this.prisma.discount.update({
+      where: { id: discountId },
+      data: {
+        isActive: true,
+      },
+    });
+
+    return {
+      discount: updated,
+      message: 'Discount resumed successfully',
+    };
+  }
+
   // ================================
   // STUDENT ANALYTICS METHODS
   // ================================
@@ -1340,6 +1436,138 @@ export class DiscountsService {
         limit,
         totalPages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  async updateFraudAlert(alertId: string, adminId: string, updateData: FraudAlertActionDto) {
+    const alert = await this.prisma.fraudAlert.findUnique({
+      where: { id: alertId },
+    });
+
+    if (!alert) {
+      throw new NotFoundException('Fraud alert not found');
+    }
+
+    const updated = await this.prisma.fraudAlert.update({
+      where: { id: alertId },
+      data: {
+        status: updateData.status,
+        resolution: updateData.resolution,
+        actionTaken: updateData.actionTaken,
+        investigatedAt: updateData.status === 'confirmed' || updateData.status === 'dismissed' ? new Date() : null,
+        investigatedBy: adminId,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    return {
+      alert: updated,
+      message: `Fraud alert ${updateData.status}`,
+    };
+  }
+
+  async getPlatformAnalytics(startDate?: string, endDate?: string) {
+    const dateFilter: any = {};
+    if (startDate && endDate) {
+      dateFilter.createdAt = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    }
+
+    // Get overall stats
+    const [
+      totalDiscounts,
+      activeDiscounts,
+      totalClaims,
+      redeemedClaims,
+      totalUsers,
+      totalBrands,
+    ] = await Promise.all([
+      this.prisma.discount.count({ where: dateFilter }),
+      this.prisma.discount.count({ where: { ...dateFilter, isActive: true } }),
+      this.prisma.discountClaim.count({ where: dateFilter }),
+      this.prisma.discountClaim.count({ where: { ...dateFilter, status: 'redeemed' } }),
+      this.prisma.user.count(),
+      this.prisma.brand.count(),
+    ]);
+
+    // Get aggregated savings
+    const savingsAgg = await this.prisma.discount.aggregate({
+      _sum: {
+        totalSavingsGenerated: true,
+      },
+      where: dateFilter,
+    });
+
+    // Get top performing discounts
+    const topDiscounts = await this.prisma.discount.findMany({
+      where: dateFilter,
+      orderBy: { totalRedemptions: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        title: true,
+        totalRedemptions: true,
+        totalClaimsCount: true,
+        totalSavingsGenerated: true,
+        brand: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Get top brands by redemptions
+    const topBrands = await this.prisma.brand.findMany({
+      orderBy: { totalSales: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        name: true,
+        totalDiscounts: true,
+        totalSales: true,
+        rating: true,
+      },
+    });
+
+    // Get fraud alert stats
+    const fraudStats = await this.prisma.fraudAlert.groupBy({
+      by: ['status'],
+      _count: true,
+    });
+
+    const redemptionRate = totalClaims > 0
+      ? ((redeemedClaims / totalClaims) * 100).toFixed(2)
+      : 0;
+
+    return {
+      overview: {
+        totalDiscounts,
+        activeDiscounts,
+        totalClaims,
+        redeemedClaims,
+        redemptionRate,
+        totalUsers,
+        totalBrands,
+        totalSavingsGenerated: savingsAgg._sum.totalSavingsGenerated || 0,
+      },
+      topDiscounts,
+      topBrands,
+      fraudAlerts: fraudStats.reduce((acc, item) => {
+        acc[item.status] = item._count;
+        return acc;
+      }, {} as Record<string, number>),
     };
   }
 

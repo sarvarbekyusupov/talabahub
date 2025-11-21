@@ -20,6 +20,7 @@ import {
   RedeemClaimDto,
   ApproveDiscountDto,
   RejectDiscountDto,
+  FraudAlertActionDto,
 } from './dto/claim-discount.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -235,6 +236,20 @@ export class DiscountsController {
     return this.discountsService.getUserClaims(user.id, status, page, limit);
   }
 
+  @Post('claims/:id/cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel a claim' })
+  @ApiResponse({ status: 200, description: 'Claim cancelled successfully' })
+  @ApiResponse({ status: 400, description: 'Cannot cancel claim' })
+  @ApiResponse({ status: 404, description: 'Claim not found' })
+  async cancelClaim(
+    @Param('id') claimId: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.discountsService.cancelClaim(claimId, user.id);
+  }
+
   @Get(':id/eligibility')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -359,6 +374,30 @@ export class DiscountsController {
     return this.discountsService.getPartnerAnalytics(brandId, startDate, endDate);
   }
 
+  @Post(':id/pause')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.partner, UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Pause a discount (Partner/Admin only)' })
+  @ApiResponse({ status: 200, description: 'Discount paused successfully' })
+  @ApiResponse({ status: 400, description: 'Cannot pause discount' })
+  @ApiResponse({ status: 404, description: 'Discount not found' })
+  async pauseDiscount(@Param('id') discountId: string) {
+    return this.discountsService.pauseDiscount(discountId);
+  }
+
+  @Post(':id/resume')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.partner, UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Resume a paused discount (Partner/Admin only)' })
+  @ApiResponse({ status: 200, description: 'Discount resumed successfully' })
+  @ApiResponse({ status: 400, description: 'Cannot resume discount' })
+  @ApiResponse({ status: 404, description: 'Discount not found' })
+  async resumeDiscount(@Param('id') discountId: string) {
+    return this.discountsService.resumeDiscount(discountId);
+  }
+
   // ================================
   // STUDENT ANALYTICS ENDPOINTS
   // ================================
@@ -397,6 +436,21 @@ export class DiscountsController {
   // FRAUD ALERT ENDPOINTS (Admin)
   // ================================
 
+  @Get('admin/analytics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get platform-wide analytics (Admin only)' })
+  @ApiQuery({ name: 'startDate', required: false, type: String })
+  @ApiQuery({ name: 'endDate', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Platform analytics' })
+  async getPlatformAnalytics(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.discountsService.getPlatformAnalytics(startDate, endDate);
+  }
+
   @Get('admin/fraud-alerts')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.admin)
@@ -412,6 +466,21 @@ export class DiscountsController {
     @Query('status') status?: string,
   ) {
     return this.discountsService.getFraudAlerts(page, limit, status);
+  }
+
+  @Patch('admin/fraud-alerts/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update fraud alert status (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Fraud alert updated' })
+  @ApiResponse({ status: 404, description: 'Fraud alert not found' })
+  async updateFraudAlert(
+    @Param('id') alertId: string,
+    @CurrentUser() user: any,
+    @Body() updateData: FraudAlertActionDto,
+  ) {
+    return this.discountsService.updateFraudAlert(alertId, user.id, updateData);
   }
 
   // ================================
