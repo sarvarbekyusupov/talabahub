@@ -118,7 +118,10 @@ export class DiscountsService {
     isActive?: boolean,
     isFeatured?: boolean,
   ) {
-    const skip = (page - 1) * limit;
+    // Ensure page and limit are numbers
+    const pageNum = Number(page) || 1;
+    const limitNum = Number(limit) || 20;
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = {};
     if (brandId !== undefined) where.brandId = brandId;
@@ -143,7 +146,7 @@ export class DiscountsService {
       this.prisma.discount.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         include: {
           brand: {
             select: {
@@ -173,9 +176,9 @@ export class DiscountsService {
       data: discounts,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
       },
     };
   }
