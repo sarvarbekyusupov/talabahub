@@ -24,6 +24,7 @@ import {
   createSubscription,
   prisma,
 } from './seeds/factories';
+import { seedBlogContent } from './seeds/blog-seed';
 
 async function main() {
   console.log('🌱 Starting database seeding...\n');
@@ -31,6 +32,27 @@ async function main() {
   // Clear existing data (optional - comment out for production)
   console.log('🗑️  Clearing existing data...');
   // Delete in correct order to respect foreign key constraints
+
+  // Blog content tables first
+  await prisma.share.deleteMany();
+  await prisma.report.deleteMany();
+  await prisma.blogNotification.deleteMany();
+  await prisma.articleView.deleteMany();
+  await prisma.responseClap.deleteMany();
+  await prisma.response.deleteMany();
+  await prisma.clap.deleteMany();
+  await prisma.bookmark.deleteMany();
+  await prisma.bookmarkCollection.deleteMany();
+  await prisma.articleTag.deleteMany();
+  await prisma.articleStats.deleteMany();
+  await prisma.articleContent.deleteMany();
+  await prisma.article.deleteMany();
+  await prisma.draft.deleteMany();
+  await prisma.tag.deleteMany();
+  await prisma.follow.deleteMany();
+  await prisma.studentProfile.deleteMany();
+
+  // Original tables
   await prisma.subscription.deleteMany();
   await prisma.adminLog.deleteMany();
   await prisma.savedItem.deleteMany();
@@ -277,6 +299,9 @@ async function main() {
     subscriptions.push(subscription);
   }
   console.log(`✅ Created ${subscriptions.length} subscriptions\n`);
+
+  // Seed Blog Content (Articles, Tags, Profiles, etc.)
+  await seedBlogContent();
 
   console.log('🎉 Seeding completed successfully!\n');
   console.log('📊 Summary:');
