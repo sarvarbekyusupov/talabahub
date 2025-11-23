@@ -532,7 +532,6 @@ export class JobsService {
           : null,
         answers: createJobApplicationDto.answers,
         applicationStatus: 'applied',
-        confirmationCode: this._generateConfirmationCode(),
       },
       include: {
         job: {
