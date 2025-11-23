@@ -9,7 +9,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { CreateJobApplicationDto } from './dto/create-job-application.dto';
-import { JobStatus, JobApplicationStatusEnum, JobPostingType } from '@prisma/client';
+// Temporary types until Prisma migration
+type JobStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'active' | 'paused' | 'closed' | 'expired';
+type JobApplicationStatusEnum = 'applied' | 'under_review' | 'shortlisted' | 'interview_scheduled' | 'interviewed' | 'hired' | 'rejected' | 'withdrawn';
+type JobPostingType = 'free' | 'premium';
 
 @Injectable()
 export class JobsService {

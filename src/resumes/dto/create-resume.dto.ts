@@ -3,7 +3,6 @@ import {
   IsString,
   IsOptional,
   IsBoolean,
-  IsEnum,
   IsArray,
   ValidateNested,
   IsDateString,
@@ -14,7 +13,9 @@ import {
   MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ResumePrivacy, LanguageProficiency } from '@prisma/client';
+// Temporary types until Prisma migration
+type ResumePrivacy = 'public' | 'private' | 'employers_only';
+type LanguageProficiency = 'native' | 'fluent' | 'intermediate' | 'basic';
 
 export class CreateResumeEducationDto {
   @ApiProperty({ example: 'Harvard University' })
@@ -128,8 +129,8 @@ export class CreateResumeLanguageDto {
   @MaxLength(50)
   language: string;
 
-  @ApiProperty({ enum: LanguageProficiency })
-  @IsEnum(LanguageProficiency)
+  @ApiProperty({ enum: ['native', 'fluent', 'intermediate', 'basic'] })
+  @IsString()
   proficiency: LanguageProficiency;
 }
 
@@ -247,9 +248,9 @@ export class CreateResumeDto {
   @IsUrl()
   pdfUrl?: string;
 
-  @ApiPropertyOptional({ enum: ResumePrivacy, default: 'private' })
+  @ApiPropertyOptional({ enum: ['public', 'private', 'employers_only'], default: 'private' })
   @IsOptional()
-  @IsEnum(ResumePrivacy)
+  @IsString()
   privacy?: ResumePrivacy;
 
   @ApiPropertyOptional({ default: false })
