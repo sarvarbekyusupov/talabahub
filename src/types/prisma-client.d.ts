@@ -8,9 +8,43 @@ export enum UserRole {
 }
 
 export enum UserVerificationStatus {
-  pending = 'pending',
+  unverified = 'unverified',
+  email_verified = 'email_verified',
+  pending_verification = 'pending_verification',
   verified = 'verified',
+  verification_expired = 'verification_expired',
   rejected = 'rejected',
+  suspended = 'suspended',
+  graduated = 'graduated',
+}
+
+export enum StudentVerificationMethod {
+  university_email = 'university_email',
+  student_id_upload = 'student_id_upload',
+  university_api = 'university_api',
+  manual_review = 'manual_review',
+}
+
+export enum VerificationRequestStatus {
+  pending = 'pending',
+  approved = 'approved',
+  rejected = 'rejected',
+  more_info_needed = 'more_info_needed',
+  cancelled = 'cancelled',
+}
+
+export enum VerificationRequestType {
+  initial = 'initial',
+  reverification = 'reverification',
+  appeal = 'appeal',
+}
+
+export enum VerificationDocumentType {
+  student_id_front = 'student_id_front',
+  student_id_back = 'student_id_back',
+  enrollment_certificate = 'enrollment_certificate',
+  payment_receipt = 'payment_receipt',
+  other = 'other',
 }
 
 export enum DiscountType {
@@ -66,6 +100,10 @@ declare module '@prisma/client' {
   export {
     UserRole,
     UserVerificationStatus,
+    StudentVerificationMethod,
+    VerificationRequestStatus,
+    VerificationRequestType,
+    VerificationDocumentType,
     DiscountType,
     JobType,
     JobApplicationStatus,

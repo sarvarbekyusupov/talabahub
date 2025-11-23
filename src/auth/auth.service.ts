@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -14,12 +15,14 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { UserVerificationStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -64,7 +67,7 @@ export class AuthService {
       }
     }
 
-    // Create user
+    // Create user with unverified status
     const user = await this.prisma.user.create({
       data: {
         email,
@@ -73,6 +76,7 @@ export class AuthService {
         referralCode,
         emailVerificationToken,
         referredBy: referrerId,
+        verificationStatus: UserVerificationStatus.unverified,
       },
       select: {
         id: true,
@@ -89,8 +93,17 @@ export class AuthService {
     // Generate JWT token
     const token = this.generateJwtToken(user.id, user.email, user.role);
 
-    // TODO: Send verification email
-    // await this.emailService.sendVerificationEmail(user.email, emailVerificationToken);
+    // Send verification email
+    try {
+      await this.mailService.sendEmailVerification(
+        user.email,
+        emailVerificationToken,
+        user.firstName,
+      );
+    } catch (error) {
+      console.error('Failed to send verification email:', error);
+      // Don't fail registration if email fails
+    }
 
     return {
       user,
@@ -223,8 +236,16 @@ export class AuthService {
       },
     });
 
-    // TODO: Send password reset email
-    // await this.emailService.sendPasswordResetEmail(user.email, resetToken);
+    // Send password reset email
+    try {
+      await this.mailService.sendPasswordReset(
+        user.email,
+        resetToken,
+        user.firstName,
+      );
+    } catch (error) {
+      console.error('Failed to send password reset email:', error);
+    }
 
     return { message: 'If an account exists with this email, a password reset link has been sent' };
   }

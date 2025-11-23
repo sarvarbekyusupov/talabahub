@@ -24,6 +24,7 @@ import {
 } from './dto/claim-discount.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { VerifiedUserGuard } from '../verification/guards/verified-user.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -181,11 +182,12 @@ export class DiscountsController {
   // ================================
 
   @Post(':id/claim')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, VerifiedUserGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Claim a discount (get claim code)' })
+  @ApiOperation({ summary: 'Claim a discount (Verified students only)' })
   @ApiResponse({ status: 201, description: 'Discount claimed successfully' })
   @ApiResponse({ status: 400, description: 'Cannot claim discount' })
+  @ApiResponse({ status: 403, description: 'Student verification required' })
   @ApiResponse({ status: 404, description: 'Discount not found' })
   async claimDiscount(
     @Param('id') discountId: string,

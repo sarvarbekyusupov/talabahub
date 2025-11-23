@@ -24,6 +24,7 @@ import { CreateJobApplicationDto } from './dto/create-job-application.dto';
 import { UpdateJobApplicationStatusDto } from './dto/update-job-application-status.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { VerifiedUserGuard } from '../verification/guards/verified-user.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -202,9 +203,11 @@ export class JobsController {
   }
 
   @Post(':id/apply')
-  @ApiOperation({ summary: 'Apply for a job posting' })
+  @UseGuards(VerifiedUserGuard)
+  @ApiOperation({ summary: 'Apply for a job posting (Verified students only)' })
   @ApiResponse({ status: 201, description: 'Application submitted' })
   @ApiResponse({ status: 400, description: 'Job not active or deadline passed' })
+  @ApiResponse({ status: 403, description: 'Student verification required' })
   @ApiResponse({ status: 409, description: 'Already applied' })
   createApplication(
     @Param('id') jobId: string,
