@@ -112,7 +112,7 @@ export class AnalyticsService {
       this.prisma.discount.count(),
       this.prisma.user.count({ where: { isActive: true } }),
       this.prisma.user.count({ where: { verificationStatus: 'verified' } }),
-      this.prisma.user.count({ where: { verificationStatus: 'pending' } }),
+      this.prisma.user.count({ where: { verificationStatus: 'pending_verification' } }),
     ]);
 
     // Get recent activity
