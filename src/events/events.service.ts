@@ -515,6 +515,10 @@ export class EventsService {
       where: { id: registrationId },
     });
 
+    if (!registration) {
+      throw new NotFoundException('Registration not found');
+    }
+
     if (registration.registrationStatus === 'attended') {
       throw new BadRequestException('User has already checked in');
     }
@@ -623,7 +627,6 @@ export class EventsService {
       where: { eventId_userId: { eventId, userId: nextInLine.userId } },
       data: {
         registrationStatus: 'registered',
-        notifiedAt: new Date(),
       },
     });
 

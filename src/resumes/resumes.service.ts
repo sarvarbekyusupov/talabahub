@@ -154,9 +154,20 @@ export class ResumesService {
       });
     }
 
+    // Extract only scalar fields for update (nested relations are handled by separate endpoints)
+    const {
+      educations,
+      experiences,
+      skills,
+      languages,
+      certifications,
+      projects,
+      ...scalarFields
+    } = updateResumeDto;
+
     const updatedResume = await this.prisma.resume.update({
       where: { id },
-      data: updateResumeDto,
+      data: scalarFields,
       include: this.getFullResumeInclude(),
     });
 
