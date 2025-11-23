@@ -1,0 +1,223 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+  Request,
+  ParseUUIDPipe,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
+import { VerificationService } from './verification.service';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
+import {
+  SubmitVerificationDto,
+  ResendVerificationEmailDto,
+} from './dto/submit-verification.dto';
+import {
+  ReviewVerificationDto,
+  BulkReviewVerificationDto,
+  VerificationListQueryDto,
+} from './dto/review-verification.dto';
+import {
+  UpdateVerificationStatusDto,
+  TriggerReverificationDto,
+} from './dto/update-verification-status.dto';
+import {
+  VerificationStatusResponse,
+  VerificationRequestResponse,
+  VerificationListResponse,
+  VerificationStatsResponse,
+} from './dto/verification-response.dto';
+
+@ApiTags('Verification')
+@Controller('verification')
+export class VerificationController {
+  constructor(private readonly verificationService: VerificationService) {}
+
+  // =============================================
+  // PUBLIC ENDPOINTS
+  // =============================================
+
+  @Get('verify-email/:token')
+  @ApiOperation({ summary: 'Verify email with token' })
+  @ApiParam({ name: 'token', description: 'Email verification token' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid token' })
+  async verifyEmail(@Param('token') token: string) {
+    return this.verificationService.verifyEmail(token);
+  }
+
+  // =============================================
+  // USER ENDPOINTS
+  // =============================================
+
+  @Get('status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user verification status' })
+  @ApiResponse({ status: 200, type: VerificationStatusResponse })
+  async getVerificationStatus(@Request() req): Promise<VerificationStatusResponse> {
+    return this.verificationService.getVerificationStatus(req.user.id);
+  }
+
+  @Post('resend-email')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend verification email' })
+  @ApiResponse({ status: 200, description: 'Email sent' })
+  async resendVerificationEmail(
+    @Request() req,
+    @Body() dto: ResendVerificationEmailDto,
+  ) {
+    return this.verificationService.sendVerificationEmail(req.user.id);
+  }
+
+  @Post('submit')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Submit student verification request' })
+  @ApiResponse({ status: 201, type: VerificationRequestResponse })
+  @ApiResponse({ status: 400, description: 'Invalid request' })
+  @ApiResponse({ status: 409, description: 'Pending request exists' })
+  async submitVerification(
+    @Request() req,
+    @Body() dto: SubmitVerificationDto,
+  ): Promise<VerificationRequestResponse> {
+    return this.verificationService.submitVerificationRequest(req.user.id, dto);
+  }
+
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get user verification history' })
+  @ApiResponse({ status: 200, type: [VerificationRequestResponse] })
+  async getVerificationHistory(@Request() req): Promise<VerificationRequestResponse[]> {
+    return this.verificationService.getUserVerificationHistory(req.user.id);
+  }
+
+  // =============================================
+  // ADMIN ENDPOINTS
+  // =============================================
+
+  @Get('admin/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get pending verification requests (Admin)' })
+  @ApiResponse({ status: 200, type: VerificationListResponse })
+  async getPendingVerifications(
+    @Query() query: VerificationListQueryDto,
+  ): Promise<VerificationListResponse> {
+    return this.verificationService.getPendingVerifications(query);
+  }
+
+  @Get('admin/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get verification statistics (Admin)' })
+  @ApiResponse({ status: 200, type: VerificationStatsResponse })
+  async getVerificationStats(): Promise<VerificationStatsResponse> {
+    return this.verificationService.getVerificationStats();
+  }
+
+  @Get('admin/request/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get verification request details (Admin)' })
+  @ApiParam({ name: 'id', description: 'Verification request ID' })
+  @ApiResponse({ status: 200, type: VerificationRequestResponse })
+  @ApiResponse({ status: 404, description: 'Request not found' })
+  async getVerificationRequest(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<VerificationRequestResponse> {
+    return this.verificationService.getVerificationRequest(id);
+  }
+
+  @Post('admin/review/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Review verification request (Admin)' })
+  @ApiParam({ name: 'id', description: 'Verification request ID' })
+  @ApiResponse({ status: 200, type: VerificationRequestResponse })
+  @ApiResponse({ status: 400, description: 'Invalid decision' })
+  @ApiResponse({ status: 404, description: 'Request not found' })
+  async reviewVerification(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+    @Body() dto: ReviewVerificationDto,
+  ): Promise<VerificationRequestResponse> {
+    return this.verificationService.reviewVerification(id, req.user.id, dto);
+  }
+
+  @Patch('admin/user/:userId/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Manually update user verification status (Admin)' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Status updated' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async updateUserStatus(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Request() req,
+    @Body() dto: UpdateVerificationStatusDto,
+  ) {
+    return this.verificationService.updateUserVerificationStatus(
+      userId,
+      req.user.id,
+      dto,
+    );
+  }
+
+  @Post('admin/user/:userId/reverify')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Trigger re-verification for user (Admin)' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Re-verification triggered' })
+  async triggerReverification(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Request() req,
+    @Body() dto: TriggerReverificationDto,
+  ) {
+    return this.verificationService.triggerReverification(
+      userId,
+      req.user.id,
+      dto,
+    );
+  }
+
+  @Get('admin/user/:userId/duplicates')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check for duplicate accounts (Admin)' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Duplicate check results' })
+  async checkDuplicates(@Param('userId', ParseUUIDPipe) userId: string) {
+    return this.verificationService.checkForDuplicates(userId);
+  }
+}

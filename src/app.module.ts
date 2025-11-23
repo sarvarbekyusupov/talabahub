@@ -32,6 +32,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { BlogContentModule } from './blog-content/blog-content.module';
 import { ResumesModule } from './resumes/resumes.module';
+import { VerificationModule } from './verification/verification.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -78,6 +79,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     AnalyticsModule,
     BlogContentModule,
     ResumesModule,
+    VerificationModule,
   ],
   controllers: [AppController],
   providers: [
