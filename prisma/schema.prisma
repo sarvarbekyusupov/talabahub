@@ -232,6 +232,130 @@ enum DeviceType {
   @@map("device_type")
 }
 
+// Jobs & Events Enhanced Enums
+enum JobPostingType {
+  free
+  premium
+
+  @@map("job_posting_type")
+}
+
+enum JobStatus {
+  draft
+  pending_approval
+  approved
+  rejected
+  active
+  paused
+  closed
+  expired
+
+  @@map("job_status")
+}
+
+enum JobApplicationStatusEnum {
+  applied
+  under_review
+  shortlisted
+  interview_scheduled
+  interviewed
+  hired
+  rejected
+  withdrawn
+
+  @@map("job_application_status_enum")
+}
+
+enum ResumePrivacy {
+  public
+  private
+  employers_only
+
+  @@map("resume_privacy")
+}
+
+enum LanguageProficiency {
+  native
+  fluent
+  intermediate
+  basic
+
+  @@map("language_proficiency")
+}
+
+enum EventStatus {
+  draft
+  pending_review
+  published
+  registration_closed
+  ongoing
+  completed
+  cancelled
+
+  @@map("event_status")
+}
+
+enum EventCategory {
+  career
+  educational
+  tech
+  social
+  sports
+  cultural
+  volunteer
+
+  @@map("event_category")
+}
+
+enum EventOrganizerType {
+  university
+  partner
+  student_club
+  platform
+
+  @@map("event_organizer_type")
+}
+
+enum EventAccessType {
+  free
+  paid
+  invite_only
+  university_only
+  open_to_all
+
+  @@map("event_access_type")
+}
+
+enum RegistrationStatus {
+  registered
+  waitlisted
+  confirmed
+  attended
+  no_show
+  cancelled
+
+  @@map("registration_status")
+}
+
+enum TicketStatus {
+  available
+  reserved
+  sold
+  used
+  refunded
+  cancelled
+
+  @@map("ticket_status")
+}
+
+enum RefundPolicy {
+  full_refund
+  partial_refund
+  no_refund
+
+  @@map("refund_policy")
+}
+
 // ============================================
 // Models
 // ============================================
@@ -330,6 +454,17 @@ model User {
   reportsMade             Report[]         @relation("ReportReporter")
   reportsReviewed         Report[]         @relation("ReportReviewer")
   drafts                  Draft[]          @relation("UserDrafts")
+
+  // Jobs & Events Enhanced Relations
+  resumes                 Resume[]         @relation("UserResumes")
+  jobSubscriptions        PartnerJobSubscription[] @relation("UserJobSubscriptions")
+  statusChanges           ApplicationStatusHistory[] @relation("StatusChangedBy")
+  jobApprovals            JobApproval[]    @relation("JobApprovalReviewer")
+  eventWaitlist           EventWaitlist[]  @relation("UserEventWaitlist")
+  eventCheckIns           EventCheckIn[]   @relation("CheckedInBy")
+  eventSeries             EventSeries[]    @relation("EventSeriesOrganizer")
+  eventFeedback           EventFeedback[]  @relation("UserEventFeedback")
+  eventCertificates       EventCertificate[] @relation("UserEventCertificates")
 
   @@index([email])
   @@index([phone])
@@ -700,6 +835,7 @@ model Company {
 model Job {
   id                   String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   companyId            Int              @map("company_id")
+  categoryId           Int?             @map("category_id")
   title                String           @db.VarChar(255)
   description          String           @db.Text
   requirements         String?          @db.Text
@@ -726,12 +862,39 @@ model Job {
   updatedAt            DateTime         @updatedAt @map("updated_at")
   closedAt             DateTime?        @map("closed_at")
 
+  // Enhanced fields
+  postingType          JobPostingType   @default(free) @map("posting_type")
+  status               JobStatus        @default(draft)
+  expiresAt            DateTime?        @map("expires_at")
+  featuredUntil        DateTime?        @map("featured_until")
+  experienceLevel      String?          @map("experience_level") @db.VarChar(50) // Entry, Junior, Mid, Senior
+  educationLevel       String?          @map("education_level") @db.VarChar(50)
+  workSchedule         String?          @map("work_schedule") @db.VarChar(100) // Full-time, Part-time, Flexible
+  contactEmail         String?          @map("contact_email") @db.VarChar(255)
+  contactPhone         String?          @map("contact_phone") @db.VarChar(20)
+  howToApply           String?          @map("how_to_apply") @db.Text
+  externalUrl          String?          @map("external_url") @db.VarChar(500)
+  universityIds        Int[]            @map("university_ids") // Target specific universities
+  shareCount           Int              @default(0) @map("share_count")
+  saveCount            Int              @default(0) @map("save_count")
+  approvedAt           DateTime?        @map("approved_at")
+  approvedBy           String?          @map("approved_by") @db.Uuid
+  rejectionReason      String?          @map("rejection_reason") @db.Text
+  matchScore           Int?             @map("match_score") // For recommendation system
+
   company              Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category             JobCategory?     @relation("JobCategoryRelation", fields: [categoryId], references: [id], onDelete: SetNull)
   applications         JobApplication[]
+  analytics            JobAnalytics[]   @relation("JobAnalyticsRelation")
+  approvals            JobApproval[]    @relation("JobApprovalHistory")
 
   @@index([companyId])
+  @@index([categoryId])
   @@index([jobType])
   @@index([applicationDeadline])
+  @@index([status])
+  @@index([postingType])
+  @@index([expiresAt])
   @@map("jobs")
 }
 
@@ -739,6 +902,7 @@ model JobApplication {
   id              String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   jobId           String               @map("job_id") @db.Uuid
   userId          String               @map("user_id") @db.Uuid
+  resumeId        String?              @map("resume_id") @db.Uuid
   cvUrl           String?              @map("cv_url") @db.VarChar(500)
   coverLetter     String?              @map("cover_letter") @db.Text
   portfolioUrl    String?              @map("portfolio_url") @db.VarChar(500)
@@ -752,12 +916,37 @@ model JobApplication {
   appliedAt       DateTime             @default(now()) @map("applied_at")
   updatedAt       DateTime             @updatedAt @map("updated_at")
 
+  // Enhanced fields
+  applicationStatus JobApplicationStatusEnum @default(applied) @map("application_status")
+  partnerNotes      String?              @map("partner_notes") @db.Text // Internal notes for partner
+  viewedAt          DateTime?            @map("viewed_at")
+  viewedBy          String?              @map("viewed_by") @db.Uuid
+  shortlistedAt     DateTime?            @map("shortlisted_at")
+  rejectedAt        DateTime?            @map("rejected_at")
+  hiredAt           DateTime?            @map("hired_at")
+  withdrawnAt       DateTime?            @map("withdrawn_at")
+  withdrawalReason  String?              @map("withdrawal_reason") @db.Text
+  availableStartDate DateTime?           @map("available_start_date") @db.Date
+  answers           Json?                // Answers to custom questions
+  matchScore        Int?                 @map("match_score") // How well student matches job
+  interviewType     String?              @map("interview_type") @db.VarChar(50) // phone, video, onsite
+  interviewMeetingLink String?           @map("interview_meeting_link") @db.VarChar(500)
+  interviewFeedback String?              @map("interview_feedback") @db.Text
+  offerSalary       Decimal?             @map("offer_salary") @db.Decimal(10, 2)
+  offerSentAt       DateTime?            @map("offer_sent_at")
+  offerResponseAt   DateTime?            @map("offer_response_at")
+  offerAccepted     Boolean?             @map("offer_accepted")
+
   job             Job                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
   user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume          Resume?              @relation("ApplicationResume", fields: [resumeId], references: [id], onDelete: SetNull)
+  statusHistory   ApplicationStatusHistory[] @relation("ApplicationStatusHistory")
 
   @@unique([jobId, userId])
   @@index([jobId])
   @@index([userId])
+  @@index([resumeId])
+  @@index([applicationStatus])
   @@map("job_applications")
 }
 
@@ -913,9 +1102,11 @@ model BlogPost {
 model Event {
   id                   String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   organizerId          String?             @map("organizer_id") @db.Uuid
+  seriesId             String?             @map("series_id") @db.Uuid
   title                String              @db.VarChar(255)
   slug                 String              @unique @db.VarChar(255)
   description          String?             @db.Text
+  shortDescription     String?             @map("short_description") @db.VarChar(300)
   coverImage           String?             @map("cover_image") @db.VarChar(500)
   eventType            String?             @map("event_type") @db.VarChar(50)
   location             String?             @db.Text
@@ -933,11 +1124,60 @@ model Event {
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
 
+  // Enhanced fields
+  eventStatus          EventStatus         @default(draft) @map("event_status")
+  category             EventCategory?
+  organizerType        EventOrganizerType  @default(partner) @map("organizer_type")
+  accessType           EventAccessType     @default(open_to_all) @map("access_type")
+  venueName            String?             @map("venue_name") @db.VarChar(255)
+  venueAddress         String?             @map("venue_address") @db.Text
+  venueLat             Decimal?            @map("venue_lat") @db.Decimal(10, 7)
+  venueLng             Decimal?            @map("venue_lng") @db.Decimal(10, 7)
+  timezone             String              @default("Asia/Tashkent") @db.VarChar(50)
+  isMultiDay           Boolean             @default(false) @map("is_multi_day")
+  registrationStartDate DateTime?          @map("registration_start_date")
+  waitlistEnabled      Boolean             @default(false) @map("waitlist_enabled")
+  waitlistCount        Int                 @default(0) @map("waitlist_count")
+  universityIds        Int[]               @map("university_ids") // Restrict to specific universities
+  minCourseYear        Int?                @map("min_course_year")
+  maxCourseYear        Int?                @map("max_course_year")
+  contactEmail         String?             @map("contact_email") @db.VarChar(255)
+  contactPhone         String?             @map("contact_phone") @db.VarChar(20)
+  termsAndConditions   String?             @map("terms_and_conditions") @db.Text
+  faq                  Json?               // Frequently asked questions
+  customQuestions      Json?               @map("custom_questions") // Registration form questions
+  socialMediaShare     Boolean             @default(true) @map("social_media_share")
+  refundPolicy         RefundPolicy        @default(no_refund) @map("refund_policy")
+  refundDeadlineDays   Int?                @map("refund_deadline_days")
+  checkInRadius        Int?                @map("check_in_radius") // For geo-fenced check-in
+  certificateEnabled   Boolean             @default(false) @map("certificate_enabled")
+  viewCount            Int                 @default(0) @map("view_count")
+  shareCount           Int                 @default(0) @map("share_count")
+  isFeatured           Boolean             @default(false) @map("is_featured")
+  featuredUntil        DateTime?           @map("featured_until")
+  approvedAt           DateTime?           @map("approved_at")
+  approvedBy           String?             @map("approved_by") @db.Uuid
+  rejectionReason      String?             @map("rejection_reason") @db.Text
+  cancelledAt          DateTime?           @map("cancelled_at")
+  cancellationReason   String?             @map("cancellation_reason") @db.Text
+
   organizer            User?               @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  series               EventSeries?        @relation("SeriesEvents", fields: [seriesId], references: [id], onDelete: SetNull)
   registrations        EventRegistration[]
+  ticketTypes          EventTicketType[]   @relation("EventTicketTypes")
+  waitlist             EventWaitlist[]     @relation("EventWaitlistRelation")
+  speakers             EventSpeaker[]      @relation("EventSpeakers")
+  sponsors             EventSponsor[]      @relation("EventSponsors")
+  agenda               EventAgendaItem[]   @relation("EventAgenda")
+  analytics            EventAnalytics[]    @relation("EventAnalyticsRelation")
+  feedback             EventFeedback[]     @relation("EventFeedbackRelation")
+  certificates         EventCertificate[]  @relation("EventCertificates")
 
   @@index([slug])
   @@index([startDate, endDate])
+  @@index([eventStatus])
+  @@index([category])
+  @@index([seriesId])
   @@map("events")
 }
 
@@ -951,10 +1191,30 @@ model EventRegistration {
   paymentMethod String?   @map("payment_method") @db.VarChar(50)
   registeredAt  DateTime  @default(now()) @map("registered_at")
 
+  // Enhanced fields
+  registrationStatus  RegistrationStatus @default(registered) @map("registration_status")
+  confirmationCode    String             @unique @map("confirmation_code") @db.VarChar(20)
+  qrCode              String?            @map("qr_code") @db.Text
+  transactionId       String?            @map("transaction_id") @db.VarChar(255)
+  ticketQuantity      Int                @default(1) @map("ticket_quantity")
+  answers             Json?              // Answers to custom questions
+  checkedInAt         DateTime?          @map("checked_in_at")
+  checkedInBy         String?            @map("checked_in_by") @db.Uuid
+  cancelledAt         DateTime?          @map("cancelled_at")
+  cancellationReason  String?            @map("cancellation_reason") @db.Text
+  refundedAt          DateTime?          @map("refunded_at")
+  refundAmount        Decimal?           @map("refund_amount") @db.Decimal(10, 2)
+  reminderSentAt      DateTime?          @map("reminder_sent_at")
+  feedbackRequestSentAt DateTime?        @map("feedback_request_sent_at")
+
   event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tickets       EventTicket[] @relation("RegistrationTickets")
+  checkIns      EventCheckIn[] @relation("RegistrationCheckIns")
 
   @@unique([eventId, userId])
+  @@index([confirmationCode])
+  @@index([registrationStatus])
   @@map("event_registrations")
 }
 
@@ -1413,4 +1673,446 @@ model Draft {
 
   @@index([authorId])
   @@map("drafts")
+}
+
+// ============================================
+// Resume System Models
+// ============================================
+
+model Resume {
+  id                String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId            String        @map("user_id") @db.Uuid
+  title             String        @db.VarChar(100) // e.g., "IT Resume", "Marketing Resume"
+  summary           String?       @db.Text
+  phone             String?       @db.VarChar(20)
+  email             String?       @db.VarChar(255)
+  location          String?       @db.VarChar(255)
+  linkedinUrl       String?       @map("linkedin_url") @db.VarChar(500)
+  githubUrl         String?       @map("github_url") @db.VarChar(500)
+  portfolioUrl      String?       @map("portfolio_url") @db.VarChar(500)
+  pdfUrl            String?       @map("pdf_url") @db.VarChar(500)
+  privacy           ResumePrivacy @default(private)
+  isDefault         Boolean       @default(false) @map("is_default")
+  viewCount         Int           @default(0) @map("view_count")
+  downloadCount     Int           @default(0) @map("download_count")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  user              User          @relation("UserResumes", fields: [userId], references: [id], onDelete: Cascade)
+  educations        ResumeEducation[]
+  experiences       ResumeExperience[]
+  skills            ResumeSkill[]
+  languages         ResumeLanguage[]
+  certifications    ResumeCertification[]
+  projects          ResumeProject[]
+  applications      JobApplication[] @relation("ApplicationResume")
+
+  @@index([userId])
+  @@map("resumes")
+}
+
+model ResumeEducation {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resumeId        String    @map("resume_id") @db.Uuid
+  institution     String    @db.VarChar(255)
+  degree          String    @db.VarChar(100)
+  fieldOfStudy    String    @map("field_of_study") @db.VarChar(255)
+  startDate       DateTime  @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  isCurrent       Boolean   @default(false) @map("is_current")
+  gpa             Decimal?  @db.Decimal(3, 2)
+  description     String?   @db.Text
+  sortOrder       Int       @default(0) @map("sort_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  resume          Resume    @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
+  @@map("resume_educations")
+}
+
+model ResumeExperience {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resumeId        String    @map("resume_id") @db.Uuid
+  company         String    @db.VarChar(255)
+  position        String    @db.VarChar(255)
+  location        String?   @db.VarChar(255)
+  startDate       DateTime  @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  isCurrent       Boolean   @default(false) @map("is_current")
+  description     String?   @db.Text
+  achievements    String[]
+  sortOrder       Int       @default(0) @map("sort_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  resume          Resume    @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
+  @@map("resume_experiences")
+}
+
+model ResumeSkill {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resumeId    String   @map("resume_id") @db.Uuid
+  name        String   @db.VarChar(100)
+  category    String?  @db.VarChar(50) // Technical, Soft Skills, Tools
+  level       Int?     // 1-5 proficiency level
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  resume      Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
+  @@map("resume_skills")
+}
+
+model ResumeLanguage {
+  id          String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resumeId    String              @map("resume_id") @db.Uuid
+  language    String              @db.VarChar(50)
+  proficiency LanguageProficiency
+  sortOrder   Int                 @default(0) @map("sort_order")
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  resume      Resume              @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
+  @@map("resume_languages")
+}
+
+model ResumeCertification {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resumeId        String    @map("resume_id") @db.Uuid
+  name            String    @db.VarChar(255)
+  organization    String    @db.VarChar(255)
+  issueDate       DateTime  @map("issue_date") @db.Date
+  expiryDate      DateTime? @map("expiry_date") @db.Date
+  credentialId    String?   @map("credential_id") @db.VarChar(255)
+  credentialUrl   String?   @map("credential_url") @db.VarChar(500)
+  sortOrder       Int       @default(0) @map("sort_order")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  resume          Resume    @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
+  @@map("resume_certifications")
+}
+
+model ResumeProject {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  resumeId        String   @map("resume_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  url             String?  @db.VarChar(500)
+  technologies    String[]
+  startDate       DateTime? @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  resume          Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([resumeId])
+  @@map("resume_projects")
+}
+
+// ============================================
+// Enhanced Job System Models
+// ============================================
+
+model JobCategory {
+  id          Int       @id @default(autoincrement())
+  nameUz      String    @map("name_uz") @db.VarChar(100)
+  nameEn      String?   @map("name_en") @db.VarChar(100)
+  nameRu      String?   @map("name_ru") @db.VarChar(100)
+  slug        String    @unique @db.VarChar(100)
+  icon        String?   @db.VarChar(100)
+  description String?   @db.Text
+  isActive    Boolean   @default(true) @map("is_active")
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  jobs        Job[]     @relation("JobCategoryRelation")
+
+  @@map("job_categories")
+}
+
+model PartnerJobSubscription {
+  id                    String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId                String         @map("user_id") @db.Uuid
+  planType              JobPostingType @map("plan_type")
+  maxActiveJobs         Int            @map("max_active_jobs")
+  jobDurationDays       Int            @map("job_duration_days")
+  featuredPlacements    Int            @default(0) @map("featured_placements")
+  startDate             DateTime       @map("start_date")
+  endDate               DateTime       @map("end_date")
+  isActive              Boolean        @default(true) @map("is_active")
+  autoRenew             Boolean        @default(false) @map("auto_renew")
+  price                 Decimal        @db.Decimal(10, 2)
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+
+  user                  User           @relation("UserJobSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("partner_job_subscriptions")
+}
+
+model ApplicationStatusHistory {
+  id              String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  applicationId   String                   @map("application_id") @db.Uuid
+  fromStatus      JobApplicationStatusEnum? @map("from_status")
+  toStatus        JobApplicationStatusEnum @map("to_status")
+  notes           String?                  @db.Text
+  changedBy       String?                  @map("changed_by") @db.Uuid
+  createdAt       DateTime                 @default(now()) @map("created_at")
+
+  application     JobApplication           @relation("ApplicationStatusHistory", fields: [applicationId], references: [id], onDelete: Cascade)
+  changedByUser   User?                    @relation("StatusChangedBy", fields: [changedBy], references: [id], onDelete: SetNull)
+
+  @@index([applicationId])
+  @@map("application_status_history")
+}
+
+model JobAnalytics {
+  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  jobId                 String   @map("job_id") @db.Uuid
+  date                  DateTime @db.Date
+  views                 Int      @default(0)
+  uniqueViews           Int      @default(0) @map("unique_views")
+  applications          Int      @default(0)
+  clicks                Int      @default(0)
+  saves                 Int      @default(0)
+  shares                Int      @default(0)
+  conversionRate        Decimal  @default(0) @map("conversion_rate") @db.Decimal(5, 2)
+
+  job                   Job      @relation("JobAnalyticsRelation", fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, date])
+  @@index([jobId])
+  @@index([date])
+  @@map("job_analytics")
+}
+
+model JobApproval {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  jobId           String    @map("job_id") @db.Uuid
+  status          JobStatus
+  reviewedBy      String?   @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime? @map("reviewed_at")
+  notes           String?   @db.Text
+  rejectionReason String?   @map("rejection_reason") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  job             Job       @relation("JobApprovalHistory", fields: [jobId], references: [id], onDelete: Cascade)
+  reviewer        User?     @relation("JobApprovalReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([jobId])
+  @@map("job_approvals")
+}
+
+// ============================================
+// Enhanced Event System Models
+// ============================================
+
+model EventTicketType {
+  id                String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId           String       @map("event_id") @db.Uuid
+  name              String       @db.VarChar(100) // Early Bird, Regular, VIP
+  description       String?      @db.Text
+  price             Decimal      @db.Decimal(10, 2)
+  quantity          Int
+  soldCount         Int          @default(0) @map("sold_count")
+  maxPerPerson      Int          @default(5) @map("max_per_person")
+  saleStartDate     DateTime     @map("sale_start_date")
+  saleEndDate       DateTime     @map("sale_end_date")
+  isActive          Boolean      @default(true) @map("is_active")
+  sortOrder         Int          @default(0) @map("sort_order")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  event             Event        @relation("EventTicketTypes", fields: [eventId], references: [id], onDelete: Cascade)
+  tickets           EventTicket[]
+
+  @@index([eventId])
+  @@map("event_ticket_types")
+}
+
+model EventTicket {
+  id              String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  ticketTypeId    String       @map("ticket_type_id") @db.Uuid
+  registrationId  String       @map("registration_id") @db.Uuid
+  ticketCode      String       @unique @map("ticket_code") @db.VarChar(20)
+  qrCode          String?      @map("qr_code") @db.Text
+  status          TicketStatus @default(sold)
+  usedAt          DateTime?    @map("used_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  ticketType      EventTicketType    @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+  registration    EventRegistration  @relation("RegistrationTickets", fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([ticketTypeId])
+  @@index([registrationId])
+  @@map("event_tickets")
+}
+
+model EventWaitlist {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId     String   @map("event_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  position    Int
+  notifiedAt  DateTime? @map("notified_at")
+  expiresAt   DateTime? @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  event       Event    @relation("EventWaitlistRelation", fields: [eventId], references: [id], onDelete: Cascade)
+  user        User     @relation("UserEventWaitlist", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@map("event_waitlist")
+}
+
+model EventCheckIn {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  registrationId  String   @map("registration_id") @db.Uuid
+  method          String   @db.VarChar(20) // qr_scan, manual, self_check_in
+  checkedInBy     String?  @map("checked_in_by") @db.Uuid
+  locationLat     Decimal? @map("location_lat") @db.Decimal(10, 7)
+  locationLng     Decimal? @map("location_lng") @db.Decimal(10, 7)
+  deviceInfo      String?  @map("device_info") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  registration    EventRegistration @relation("RegistrationCheckIns", fields: [registrationId], references: [id], onDelete: Cascade)
+  checkedInByUser User?    @relation("CheckedInBy", fields: [checkedInBy], references: [id], onDelete: SetNull)
+
+  @@index([registrationId])
+  @@map("event_check_ins")
+}
+
+model EventSeries {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  organizerId     String   @map("organizer_id") @db.Uuid
+  isRecurring     Boolean  @default(false) @map("is_recurring")
+  recurrenceRule  String?  @map("recurrence_rule") @db.VarChar(100) // e.g., "WEEKLY", "MONTHLY"
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organizer       User     @relation("EventSeriesOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  events          Event[]  @relation("SeriesEvents")
+
+  @@index([organizerId])
+  @@map("event_series")
+}
+
+model EventSpeaker {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId     String   @map("event_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  title       String?  @db.VarChar(255)
+  company     String?  @db.VarChar(255)
+  bio         String?  @db.Text
+  photoUrl    String?  @map("photo_url") @db.VarChar(500)
+  linkedinUrl String?  @map("linkedin_url") @db.VarChar(500)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  event       Event    @relation("EventSpeakers", fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_speakers")
+}
+
+model EventSponsor {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId     String   @map("event_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  tier        String?  @db.VarChar(50) // Gold, Silver, Bronze
+  logoUrl     String?  @map("logo_url") @db.VarChar(500)
+  website     String?  @db.VarChar(500)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  event       Event    @relation("EventSponsors", fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_sponsors")
+}
+
+model EventAgendaItem {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId     String    @map("event_id") @db.Uuid
+  title       String    @db.VarChar(255)
+  description String?   @db.Text
+  startTime   DateTime  @map("start_time")
+  endTime     DateTime  @map("end_time")
+  location    String?   @db.VarChar(255) // Room or specific location
+  speakerName String?   @map("speaker_name") @db.VarChar(255)
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  event       Event     @relation("EventAgenda", fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("event_agenda_items")
+}
+
+model EventAnalytics {
+  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId               String   @map("event_id") @db.Uuid
+  date                  DateTime @db.Date
+  views                 Int      @default(0)
+  uniqueViews           Int      @default(0) @map("unique_views")
+  registrations         Int      @default(0)
+  cancellations         Int      @default(0)
+  ticketsSold           Int      @default(0) @map("tickets_sold")
+  revenue               Decimal  @default(0) @db.Decimal(12, 2)
+  checkIns              Int      @default(0) @map("check_ins")
+  conversionRate        Decimal  @default(0) @map("conversion_rate") @db.Decimal(5, 2)
+
+  event                 Event    @relation("EventAnalyticsRelation", fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, date])
+  @@index([eventId])
+  @@index([date])
+  @@map("event_analytics")
+}
+
+model EventFeedback {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId     String   @map("event_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  rating      Int      // 1-5
+  comment     String?  @db.Text
+  wouldRecommend Boolean @default(true) @map("would_recommend")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  event       Event    @relation("EventFeedbackRelation", fields: [eventId], references: [id], onDelete: Cascade)
+  user        User     @relation("UserEventFeedback", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@map("event_feedback")
+}
+
+model EventCertificate {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId         String   @map("event_id") @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  certificateCode String   @unique @map("certificate_code") @db.VarChar(50)
+  certificateUrl  String?  @map("certificate_url") @db.VarChar(500)
+  issuedAt        DateTime @default(now()) @map("issued_at")
+
+  event           Event    @relation("EventCertificates", fields: [eventId], references: [id], onDelete: Cascade)
+  user            User     @relation("UserEventCertificates", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+  @@map("event_certificates")
 }
