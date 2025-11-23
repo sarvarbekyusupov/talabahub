@@ -1,4 +1,8 @@
-import { PrismaClient, TagCategory, ContentBlockType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+
+// Temporary types until Prisma migration
+type TagCategory = 'technology' | 'career' | 'education' | 'lifestyle' | 'events' | 'resources' | 'other';
+type ContentBlockType = 'paragraph' | 'heading' | 'image' | 'code' | 'quote' | 'list' | 'embed' | 'divider' | 'callout';
 
 const prisma = new PrismaClient();
 
@@ -34,14 +38,14 @@ export async function seedBlogContent() {
   // Create tags
   console.log('🏷️  Creating tags...');
   const tagData = [
-    { name: 'Technology', slug: 'technology', category: TagCategory.tech },
-    { name: 'Programming', slug: 'programming', category: TagCategory.tech },
-    { name: 'Career', slug: 'career', category: TagCategory.career },
-    { name: 'Study Tips', slug: 'study-tips', category: TagCategory.study },
-    { name: 'University Life', slug: 'university-life', category: TagCategory.life },
-    { name: 'Internships', slug: 'internships', category: TagCategory.career },
-    { name: 'Startups', slug: 'startups', category: TagCategory.career },
-    { name: 'AI & ML', slug: 'ai-ml', category: TagCategory.tech },
+    { name: 'Technology', slug: 'technology', category: 'technology' as TagCategory },
+    { name: 'Programming', slug: 'programming', category: 'technology' as TagCategory },
+    { name: 'Career', slug: 'career', category: 'career' as TagCategory },
+    { name: 'Study Tips', slug: 'study-tips', category: 'education' as TagCategory },
+    { name: 'University Life', slug: 'university-life', category: 'lifestyle' as TagCategory },
+    { name: 'Internships', slug: 'internships', category: 'career' as TagCategory },
+    { name: 'Startups', slug: 'startups', category: 'career' as TagCategory },
+    { name: 'AI & ML', slug: 'ai-ml', category: 'technology' as TagCategory },
   ];
 
   const tags: any[] = [];
@@ -188,7 +192,7 @@ export async function seedBlogContent() {
     await prisma.articleContent.create({
       data: {
         articleId: article.id,
-        blockType: ContentBlockType.paragraph,
+        blockType: 'paragraph' as ContentBlockType,
         content: {
           text: `This is the content for "${data.title}". Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
         },
@@ -199,7 +203,7 @@ export async function seedBlogContent() {
     await prisma.articleContent.create({
       data: {
         articleId: article.id,
-        blockType: ContentBlockType.heading,
+        blockType: 'heading' as ContentBlockType,
         content: {
           level: 2,
           text: 'Key Points',
