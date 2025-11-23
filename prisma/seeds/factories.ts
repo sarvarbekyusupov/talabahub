@@ -94,7 +94,7 @@ export async function createUser(data?: Partial<any>) {
       courseYear: randomInt(1, 4),
       graduationYear: randomInt(2022, 2028),
       faculty: randomElement(['Computer Science', 'Engineering', 'Business', 'Medicine', 'Law']),
-      verificationStatus: randomElement(['pending', 'verified', 'rejected']),
+      verificationStatus: randomElement(['unverified', 'email_verified', 'pending_verification', 'verified', 'rejected']),
       role: 'student',
       ...data,
     },
