@@ -1,14 +1,16 @@
-import { IsString, IsNotEmpty, IsOptional, IsObject, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsObject, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { NotificationType } from '@prisma/client';
+
+// Temporary type until Prisma migration
+type NotificationType = 'email' | 'sms' | 'push' | 'in_app';
 
 export class CreateNotificationDto {
   @ApiProperty({
     description: 'Notification type',
-    enum: NotificationType,
+    enum: ['email', 'sms', 'push', 'in_app'],
     example: 'in_app',
   })
-  @IsEnum(NotificationType)
+  @IsIn(['email', 'sms', 'push', 'in_app'])
   type: NotificationType;
 
   @ApiProperty({

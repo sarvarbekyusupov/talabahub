@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEducationPartnerDto } from './dto/create-education-partner.dto';
 import { UpdateEducationPartnerDto } from './dto/update-education-partner.dto';
-import { EducationPartner, Prisma } from '@prisma/client';
 
 @Injectable()
 export class EducationPartnersService {
@@ -11,7 +10,7 @@ export class EducationPartnersService {
   /**
    * Create a new education partner
    */
-  async create(createEducationPartnerDto: CreateEducationPartnerDto): Promise<EducationPartner> {
+  async create(createEducationPartnerDto: CreateEducationPartnerDto): Promise<any> {
     // Check if slug already exists
     const existingPartner = await this.prisma.educationPartner.findUnique({
       where: { slug: createEducationPartnerDto.slug },
@@ -33,9 +32,7 @@ export class EducationPartnersService {
         phone: createEducationPartnerDto.phone,
         address: createEducationPartnerDto.address,
         socialMedia: createEducationPartnerDto.socialMedia,
-        commissionRate: createEducationPartnerDto.commissionRate
-          ? new Prisma.Decimal(createEducationPartnerDto.commissionRate)
-          : new Prisma.Decimal(10),
+        commissionRate: createEducationPartnerDto.commissionRate ?? 10,
       },
     });
   }
@@ -48,14 +45,14 @@ export class EducationPartnersService {
     limit: number = 10,
     isActive?: boolean,
     isVerified?: boolean,
-  ): Promise<{ data: (EducationPartner & { courseCount: number })[]; total: number; page: number; limit: number }> {
+  ): Promise<{ data: any[]; total: number; page: number; limit: number }> {
     if (page < 1) page = 1;
     if (limit < 1) limit = 10;
     if (limit > 100) limit = 100;
 
     const skip = (page - 1) * limit;
 
-    const where: Prisma.EducationPartnerWhereInput = {};
+    const where: any = {};
     if (isActive !== undefined) where.isActive = isActive;
     if (isVerified !== undefined) where.isVerified = isVerified;
 
@@ -93,7 +90,7 @@ export class EducationPartnersService {
   /**
    * Get a single education partner by ID with course count
    */
-  async findOne(id: number): Promise<EducationPartner & { courseCount: number }> {
+  async findOne(id: number): Promise<any> {
     const partner = await this.prisma.educationPartner.findUnique({
       where: { id },
     });
@@ -115,7 +112,7 @@ export class EducationPartnersService {
   /**
    * Update an education partner
    */
-  async update(id: number, updateEducationPartnerDto: UpdateEducationPartnerDto): Promise<EducationPartner> {
+  async update(id: number, updateEducationPartnerDto: UpdateEducationPartnerDto): Promise<any> {
     const partner = await this.prisma.educationPartner.findUnique({
       where: { id },
     });
@@ -139,7 +136,7 @@ export class EducationPartnersService {
       data: {
         ...updateEducationPartnerDto,
         commissionRate: updateEducationPartnerDto.commissionRate
-          ? new Prisma.Decimal(updateEducationPartnerDto.commissionRate)
+          ? (updateEducationPartnerDto.commissionRate)
           : undefined,
       },
     });
@@ -148,7 +145,7 @@ export class EducationPartnersService {
   /**
    * Delete an education partner
    */
-  async remove(id: number): Promise<EducationPartner> {
+  async remove(id: number): Promise<any> {
     const partner = await this.prisma.educationPartner.findUnique({
       where: { id },
     });
@@ -273,7 +270,7 @@ export class EducationPartnersService {
   /**
    * Update partner rating based on course reviews
    */
-  async updatePartnerRating(partnerId: number): Promise<EducationPartner> {
+  async updatePartnerRating(partnerId: number): Promise<any> {
     const partner = await this.prisma.educationPartner.findUnique({
       where: { id: partnerId },
     });
@@ -312,7 +309,7 @@ export class EducationPartnersService {
     return this.prisma.educationPartner.update({
       where: { id: partnerId },
       data: {
-        rating: new Prisma.Decimal(averageRating),
+        rating: (averageRating),
         reviewCount: reviews.length,
       },
     });
@@ -325,14 +322,14 @@ export class EducationPartnersService {
     query: string,
     page: number = 1,
     limit: number = 10,
-  ): Promise<{ data: (EducationPartner & { courseCount: number })[]; total: number; page: number; limit: number }> {
+  ): Promise<{ data: any[]; total: number; page: number; limit: number }> {
     if (page < 1) page = 1;
     if (limit < 1) limit = 10;
     if (limit > 100) limit = 100;
 
     const skip = (page - 1) * limit;
 
-    const where: Prisma.EducationPartnerWhereInput = {
+    const where: any = {
       OR: [
         { name: { contains: query, mode: 'insensitive' } },
         { description: { contains: query, mode: 'insensitive' } },
