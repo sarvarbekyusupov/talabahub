@@ -26,6 +26,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AuditLog } from '../common/decorators/audit.decorator';
 import { AuditAction } from '../audit/audit.service';
+import { UserRole } from '@prisma/client';
 
 @ApiTags('Education Partners')
 @Controller('education-partners')
@@ -38,7 +39,7 @@ export class EducationPartnersController {
    */
   @Post()
   @AuditLog(AuditAction.CREATE, 'EducationPartner')
-  @Roles('admin', 'partner')
+  @Roles(UserRole.admin, UserRole.partner)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new education partner' })
   @ApiResponse({
@@ -279,7 +280,7 @@ export class EducationPartnersController {
    */
   @Patch(':id')
   @AuditLog(AuditAction.UPDATE, 'EducationPartner')
-  @Roles('admin', 'partner')
+  @Roles(UserRole.admin, UserRole.partner)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update an education partner' })
   @ApiParam({ name: 'id', type: Number, description: 'Partner ID' })
@@ -303,7 +304,7 @@ export class EducationPartnersController {
    */
   @Delete(':id')
   @AuditLog(AuditAction.DELETE, 'EducationPartner')
-  @Roles('admin')
+  @Roles(UserRole.admin)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete an education partner (Admin only)' })
   @ApiParam({ name: 'id', type: Number, description: 'Partner ID' })

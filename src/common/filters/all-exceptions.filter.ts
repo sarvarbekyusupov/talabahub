@@ -34,14 +34,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = exceptionResponse;
       }
     }
-    // Handle Prisma errors
-    else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+    // Handle Prisma errors (using type guard for compatibility)
+    else if (this.isPrismaKnownRequestError(exception)) {
       status = HttpStatus.BAD_REQUEST;
       error = 'Database Error';
 
       switch (exception.code) {
         case 'P2002':
-          message = `Duplicate entry: ${exception.meta?.target} already exists`;
+          message = `Duplicate entry: ${(exception.meta as any)?.target} already exists`;
           status = HttpStatus.CONFLICT;
           break;
         case 'P2025':
@@ -59,7 +59,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     }
     // Handle Prisma validation errors
-    else if (exception instanceof Prisma.PrismaClientValidationError) {
+    else if (this.isPrismaValidationError(exception)) {
       status = HttpStatus.BAD_REQUEST;
       error = 'Validation Error';
       message = 'Invalid data provided';
@@ -84,5 +84,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error,
       message,
     });
+  }
+
+  private isPrismaKnownRequestError(error: unknown): error is { code: string; meta?: unknown } {
+    return (
+      error !== null &&
+      typeof error === 'object' &&
+      'code' in error &&
+      typeof (error as any).code === 'string' &&
+      (error as any).code.startsWith('P')
+    );
+  }
+
+  private isPrismaValidationError(error: unknown): boolean {
+    return (
+      error !== null &&
+      typeof error === 'object' &&
+      error.constructor?.name === 'PrismaClientValidationError'
+    );
   }
 }
