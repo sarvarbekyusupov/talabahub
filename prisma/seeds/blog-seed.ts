@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 
-// Temporary types until Prisma migration
-type TagCategory = 'technology' | 'career' | 'education' | 'lifestyle' | 'events' | 'resources' | 'other';
-type ContentBlockType = 'paragraph' | 'heading' | 'image' | 'code' | 'quote' | 'list' | 'embed' | 'divider' | 'callout';
+// Temporary types matching actual Prisma schema enums
+type TagCategory = 'study' | 'career' | 'life' | 'tech' | 'personal';
+type ContentBlockType = 'paragraph' | 'heading' | 'image' | 'code' | 'quote' | 'list' | 'embed';
 
 const prisma = new PrismaClient();
 
@@ -38,14 +38,14 @@ export async function seedBlogContent() {
   // Create tags
   console.log('🏷️  Creating tags...');
   const tagData = [
-    { name: 'Technology', slug: 'technology', category: 'technology' as TagCategory },
-    { name: 'Programming', slug: 'programming', category: 'technology' as TagCategory },
+    { name: 'Technology', slug: 'technology', category: 'tech' as TagCategory },
+    { name: 'Programming', slug: 'programming', category: 'tech' as TagCategory },
     { name: 'Career', slug: 'career', category: 'career' as TagCategory },
-    { name: 'Study Tips', slug: 'study-tips', category: 'education' as TagCategory },
-    { name: 'University Life', slug: 'university-life', category: 'lifestyle' as TagCategory },
+    { name: 'Study Tips', slug: 'study-tips', category: 'study' as TagCategory },
+    { name: 'University Life', slug: 'university-life', category: 'life' as TagCategory },
     { name: 'Internships', slug: 'internships', category: 'career' as TagCategory },
     { name: 'Startups', slug: 'startups', category: 'career' as TagCategory },
-    { name: 'AI & ML', slug: 'ai-ml', category: 'technology' as TagCategory },
+    { name: 'AI & ML', slug: 'ai-ml', category: 'tech' as TagCategory },
   ];
 
   const tags: any[] = [];
