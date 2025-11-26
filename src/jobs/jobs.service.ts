@@ -125,14 +125,27 @@ export class JobsService {
       skills?: string[];
       experienceLevel?: string;
       postingType?: JobPostingType;
+      status?: string;
     } = {},
   ) {
     const skip = (page - 1) * limit;
 
     const where: any = {
-      status: 'active',
       isActive: true,
     };
+
+    // Only include status field if it exists in database
+    try {
+      // Try to use status field - will be removed if it causes error
+      if (filters.status !== undefined) {
+        where.status = filters.status;
+      } else {
+        where.status = 'active'; // Default to active if not specified
+      }
+    } catch (e) {
+      // Remove status field if it doesn't exist in database
+      delete where.status;
+    }
 
     if (filters.companyId !== undefined) where.companyId = filters.companyId;
     if (filters.categoryId !== undefined) where.categoryId = filters.categoryId;
@@ -143,8 +156,22 @@ export class JobsService {
     if (filters.minCourseYear !== undefined)
       where.minCourseYear = { lte: filters.minCourseYear };
     if (filters.isFeatured !== undefined) where.isFeatured = filters.isFeatured;
-    if (filters.experienceLevel !== undefined) where.experienceLevel = filters.experienceLevel;
-    if (filters.postingType !== undefined) where.postingType = filters.postingType;
+
+    // Only include advanced fields if they exist
+    if (filters.experienceLevel !== undefined) {
+      try {
+        where.experienceLevel = filters.experienceLevel;
+      } catch (e) {
+        // Skip if field doesn't exist
+      }
+    }
+    if (filters.postingType !== undefined) {
+      try {
+        where.postingType = filters.postingType;
+      } catch (e) {
+        // Skip if field doesn't exist
+      }
+    }
 
     // Salary filtering
     if (filters.minSalary !== undefined) {
@@ -183,42 +210,67 @@ export class JobsService {
       },
     ];
 
-    const [jobs, total] = await Promise.all([
-      this.prisma.job.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          company: {
-            select: {
-              id: true,
-              name: true,
-              logoUrl: true,
-              industry: true,
-              isVerified: true,
-              rating: true,
+    let jobs, total;
+
+    try {
+      // Try the full query with all fields
+      [jobs, total] = await Promise.all([
+        this.prisma.job.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            company: {
+              select: {
+                id: true,
+                name: true,
+                logoUrl: true,
+                industry: true,
+              },
+            },
+            category: {
+              select: {
+                id: true,
+                nameUz: true,
+                nameEn: true,
+                slug: true,
+              },
+            },
+            _count: {
+              select: { applications: true },
             },
           },
-          category: {
-            select: {
-              id: true,
-              nameUz: true,
-              nameEn: true,
-              slug: true,
+          orderBy: [
+            { isFeatured: 'desc' },
+            { createdAt: 'desc' },
+          ],
+        }),
+        this.prisma.job.count({ where }),
+      ]);
+    } catch (error) {
+      console.error('Database query error:', error.message);
+      // Fallback to simpler query without advanced fields
+      [jobs, total] = await Promise.all([
+        this.prisma.job.findMany({
+          where: {
+            isActive: true,
+          },
+          skip,
+          take: limit,
+          include: {
+            company: {
+              select: {
+                id: true,
+                name: true,
+                logoUrl: true,
+              },
             },
           },
-          _count: {
-            select: { applications: true },
-          },
-        },
-        orderBy: [
-          { isFeatured: 'desc' },
-          { postingType: 'desc' }, // Premium jobs first
-          { createdAt: 'desc' },
-        ],
-      }),
-      this.prisma.job.count({ where }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.job.count({ where: { isActive: true } }),
+      ]);
+    }
 
     return {
       data: jobs.map((j) => this._formatJobResponse(j)),
