@@ -1,5 +1,50 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+// Move VerificationUserInfo to the top to avoid circular reference
+export class VerificationUserInfo {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  firstName: string;
+
+  @ApiProperty()
+  lastName: string;
+
+  @ApiPropertyOptional()
+  middleName?: string;
+
+  @ApiPropertyOptional()
+  avatarUrl?: string;
+
+  @ApiPropertyOptional()
+  phone?: string;
+
+  @ApiPropertyOptional()
+  studentIdNumber?: string;
+
+  @ApiPropertyOptional()
+  faculty?: string;
+
+  @ApiPropertyOptional()
+  courseYear?: number;
+
+  @ApiPropertyOptional()
+  graduationYear?: number;
+
+  @ApiPropertyOptional()
+  universityName?: string;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  verificationAttempts: number;
+}
+
 export class VerificationStatusResponse {
   @ApiProperty()
   verificationStatus: string;
@@ -91,50 +136,6 @@ export class VerificationDocumentResponse {
 
   @ApiProperty()
   uploadedAt: Date;
-}
-
-export class VerificationUserInfo {
-  @ApiProperty()
-  id: string;
-
-  @ApiProperty()
-  email: string;
-
-  @ApiProperty()
-  firstName: string;
-
-  @ApiProperty()
-  lastName: string;
-
-  @ApiPropertyOptional()
-  middleName?: string;
-
-  @ApiPropertyOptional()
-  avatarUrl?: string;
-
-  @ApiPropertyOptional()
-  phone?: string;
-
-  @ApiPropertyOptional()
-  studentIdNumber?: string;
-
-  @ApiPropertyOptional()
-  faculty?: string;
-
-  @ApiPropertyOptional()
-  courseYear?: number;
-
-  @ApiPropertyOptional()
-  graduationYear?: number;
-
-  @ApiPropertyOptional()
-  universityName?: string;
-
-  @ApiProperty()
-  createdAt: Date;
-
-  @ApiProperty()
-  verificationAttempts: number;
 }
 
 export class VerificationListResponse {
