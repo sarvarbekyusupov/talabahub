@@ -36,7 +36,7 @@ import { AuditAction } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { VerifiedUserGuard } from '../verification/guards/verified-user.guard';
+import { SimpleUserGuard } from '../common/guards/simple-user.guard';
 
 @ApiTags('events')
 @Controller('events')
@@ -168,7 +168,7 @@ export class EventsController {
   // ==========================================
 
   @Post(':id/register')
-  @UseGuards(VerifiedUserGuard)
+  @UseGuards(SimpleUserGuard)
   @ApiOperation({ summary: 'Register for an event (Verified students only)' })
   @ApiParam({ name: 'id', description: 'Event ID (UUID)' })
   @ApiResponse({ status: 201, description: 'Successfully registered' })

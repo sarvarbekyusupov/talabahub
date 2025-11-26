@@ -24,7 +24,7 @@ import { CreateJobApplicationDto } from './dto/create-job-application.dto';
 import { UpdateJobApplicationStatusDto } from './dto/update-job-application-status.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { VerifiedUserGuard } from '../verification/guards/verified-user.guard';
+import { SimpleUserGuard } from '../common/guards/simple-user.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -223,7 +223,7 @@ export class JobsController {
   // }
 
   @Post(':id/apply')
-  @UseGuards(VerifiedUserGuard)
+  @UseGuards(SimpleUserGuard)
   @ApiOperation({ summary: 'Apply for a job posting (Verified students only)' })
   @ApiResponse({ status: 201, description: 'Application submitted' })
   @ApiResponse({ status: 400, description: 'Job not active or deadline passed' })

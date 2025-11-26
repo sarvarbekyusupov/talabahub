@@ -60,25 +60,13 @@ export class VerifiedUserGuard implements CanActivate {
       );
     }
 
-    if (dbUser.verificationStatus !== UserVerificationStatus.verified &&
-        dbUser.verificationStatus !== UserVerificationStatus.grace_period) {
+    if (dbUser.verificationStatus !== UserVerificationStatus.verified) {
       const messages: Record<UserVerificationStatus, string> = {
-        [UserVerificationStatus.unverified]:
-          'Please complete student verification to access this feature',
-        [UserVerificationStatus.email_verified]:
-          'Please complete student verification to access this feature',
-        [UserVerificationStatus.pending_verification]:
+        [UserVerificationStatus.pending]:
           'Your verification is under review. Please wait for approval.',
         [UserVerificationStatus.verified]: '',
-        [UserVerificationStatus.grace_period]: '',
-        [UserVerificationStatus.verification_expired]:
-          'Your verification has expired. Please re-verify your student status.',
         [UserVerificationStatus.rejected]:
           'Your verification was rejected. Please check the reason and re-submit.',
-        [UserVerificationStatus.suspended]:
-          'Your account is suspended. Please contact support.',
-        [UserVerificationStatus.graduated]:
-          'This feature is only available for current students.',
       };
 
       throw new ForbiddenException(

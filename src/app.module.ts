@@ -32,7 +32,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 // import { BlogContentModule } from './blog-content/blog-content.module'; // Module removed
 // import { ResumesModule } from './resumes/resumes.module'; // Disabled - resume model doesn't exist
-import { VerificationModule } from './verification/verification.module';
+// import { VerificationModule } from './verification/verification.module'; // Disabled - database tables don't exist
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -79,7 +79,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     AnalyticsModule,
     // BlogContentModule, // Module removed
     // ResumesModule, // Disabled - resume model doesn't exist
-    VerificationModule,
+    // VerificationModule, // Disabled - database tables don't exist
   ],
   controllers: [AppController],
   providers: [
