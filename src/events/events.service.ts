@@ -7,12 +7,8 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
-import { UserRole } from '@prisma/client';
+import { UserRole, EventStatus, EventCategory, EventOrganizerType, EventAccessType, RegistrationStatus } from '@prisma/client';
 import * as crypto from 'crypto';
-
-// Temporary types until Prisma migration
-type EventStatus = 'draft' | 'pending_review' | 'published' | 'registration_closed' | 'ongoing' | 'completed' | 'cancelled';
-type RegistrationStatus = 'registered' | 'waitlisted' | 'confirmed' | 'attended' | 'no_show' | 'cancelled';
 
 interface FindAllQuery {
   page?: number;

@@ -5,64 +5,618 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-
-  // Connection pooling configuration
-  // For production: set connection_limit in DATABASE_URL
-  // Example: postgresql://user:pass@localhost:5432/db?connection_limit=10&pool_timeout=20
 }
 
-// ============================================
-// Enums
-// ============================================
+model University {
+  id          Int      @id @default(autoincrement())
+  nameUz      String   @map("name_uz") @db.VarChar(255)
+  nameEn      String?  @map("name_en") @db.VarChar(255)
+  nameRu      String?  @map("name_ru") @db.VarChar(255)
+  emailDomain String?  @unique @map("email_domain") @db.VarChar(100)
+  logoUrl     String?  @map("logo_url") @db.VarChar(500)
+  website     String?  @db.VarChar(255)
+  address     String?
+  city        String?  @db.VarChar(100)
+  region      String?  @db.VarChar(100)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  users       User[]
+
+  @@map("universities")
+}
+
+model User {
+  id                      String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email                   String                 @unique @db.VarChar(255)
+  phone                   String?                @unique @db.VarChar(20)
+  passwordHash            String                 @map("password_hash") @db.VarChar(255)
+  firstName               String                 @map("first_name") @db.VarChar(100)
+  lastName                String                 @map("last_name") @db.VarChar(100)
+  middleName              String?                @map("middle_name") @db.VarChar(100)
+  dateOfBirth             DateTime?              @map("date_of_birth") @db.Date
+  gender                  String?                @db.VarChar(10)
+  avatarUrl               String?                @map("avatar_url") @db.VarChar(500)
+  universityId            Int?                   @map("university_id")
+  studentIdNumber         String?                @map("student_id_number") @db.VarChar(50)
+  studentIdPhoto          String?                @map("student_id_photo") @db.VarChar(500)
+  faculty                 String?                @db.VarChar(255)
+  courseYear              Int?                   @map("course_year")
+  graduationYear          Int?                   @map("graduation_year")
+  verificationStatus      UserVerificationStatus @default(pending) @map("verification_status")
+  verificationDate        DateTime?              @map("verification_date")
+  verificationNotes       String?                @map("verification_notes")
+  role                    UserRole               @default(student)
+  isActive                Boolean                @default(true) @map("is_active")
+  isEmailVerified         Boolean                @default(false) @map("is_email_verified")
+  emailVerificationToken  String?                @map("email_verification_token") @db.VarChar(255)
+  passwordResetToken      String?                @map("password_reset_token") @db.VarChar(255)
+  passwordResetExpires    DateTime?              @map("password_reset_expires")
+  preferredLanguage       String                 @default("uz") @map("preferred_language") @db.VarChar(10)
+  notificationPreferences Json                   @default("{\"sms\": false, \"push\": true, \"email\": true}") @map("notification_preferences")
+  totalDiscountsUsed      Int                    @default(0) @map("total_discounts_used")
+  totalSavings            Decimal                @default(0) @map("total_savings") @db.Decimal(10, 2)
+  referralCode            String?                @unique @map("referral_code") @db.VarChar(20)
+  referredBy              String?                @map("referred_by") @db.Uuid
+  lastLoginAt             DateTime?              @map("last_login_at")
+  createdAt               DateTime               @default(now()) @map("created_at")
+  updatedAt               DateTime               @updatedAt @map("updated_at")
+  deletedAt               DateTime?              @map("deleted_at")
+  adminLogs               AdminLog[]
+  analyticsEvents         AnalyticsEvent[]
+  blogPosts               BlogPost[]
+  courseEnrollments       CourseEnrollment[]
+  discountUsages          DiscountUsage[]
+  eventRegistrations      EventRegistration[]
+  events                  Event[]
+  jobApplications         JobApplication[]
+  notifications           Notification[]
+  reviews                 Review[]
+  savedItems              SavedItem[]
+  savedSearches           SavedSearch[]
+  subscriptions           Subscription[]
+  transactions            Transaction[]
+  referrer                User?                  @relation("UserReferrals", fields: [referredBy], references: [id])
+  referrals               User[]                 @relation("UserReferrals")
+  university              University?            @relation(fields: [universityId], references: [id])
+
+  @@index([email])
+  @@index([phone])
+  @@index([universityId])
+  @@index([verificationStatus])
+  @@index([referralCode])
+  @@map("users")
+}
+
+model Category {
+  id          Int        @id @default(autoincrement())
+  nameUz      String     @map("name_uz") @db.VarChar(100)
+  nameEn      String?    @map("name_en") @db.VarChar(100)
+  nameRu      String?    @map("name_ru") @db.VarChar(100)
+  slug        String     @unique @db.VarChar(100)
+  icon        String?    @db.VarChar(100)
+  description String?
+  parentId    Int?       @map("parent_id")
+  sortOrder   Int        @default(0) @map("sort_order")
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  blogPosts   BlogPost[]
+  brands      Brand[]
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Category[] @relation("CategoryHierarchy")
+  courses     Course[]
+  discounts   Discount[]
+
+  @@index([slug])
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Brand {
+  id             Int        @id @default(autoincrement())
+  name           String     @db.VarChar(255)
+  slug           String     @unique @db.VarChar(255)
+  logoUrl        String?    @map("logo_url") @db.VarChar(500)
+  bannerUrl      String?    @map("banner_url") @db.VarChar(500)
+  description    String?
+  website        String?    @db.VarChar(255)
+  contactEmail   String?    @map("contact_email") @db.VarChar(255)
+  contactPhone   String?    @map("contact_phone") @db.VarChar(20)
+  socialMedia    Json?      @map("social_media")
+  categoryId     Int?       @map("category_id")
+  commissionRate Decimal    @default(5.00) @map("commission_rate") @db.Decimal(5, 2)
+  totalDiscounts Int        @default(0) @map("total_discounts")
+  totalSales     Int        @default(0) @map("total_sales")
+  rating         Decimal    @default(0.00) @db.Decimal(3, 2)
+  reviewCount    Int        @default(0) @map("review_count")
+  isActive       Boolean    @default(true) @map("is_active")
+  isFeatured     Boolean    @default(false) @map("is_featured")
+  featuredUntil  DateTime?  @map("featured_until")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  category       Category?  @relation(fields: [categoryId], references: [id])
+  discounts      Discount[]
+
+  @@index([slug])
+  @@index([categoryId])
+  @@map("brands")
+}
+
+model Discount {
+  id                 String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brandId            Int             @map("brand_id")
+  categoryId         Int?            @map("category_id")
+  title              String          @db.VarChar(255)
+  description        String?
+  termsAndConditions String?         @map("terms_and_conditions")
+  howToUse           String?         @map("how_to_use")
+  imageUrl           String?         @map("image_url") @db.VarChar(500)
+  discountType       DiscountType    @map("discount_type")
+  discountValue      Decimal         @map("discount_value") @db.Decimal(10, 2)
+  minPurchaseAmount  Decimal?        @map("min_purchase_amount") @db.Decimal(10, 2)
+  maxDiscountAmount  Decimal?        @map("max_discount_amount") @db.Decimal(10, 2)
+  promoCode          String?         @map("promo_code") @db.VarChar(50)
+  startDate          DateTime        @map("start_date")
+  endDate            DateTime        @map("end_date")
+  usageLimitPerUser  Int             @default(1) @map("usage_limit_per_user")
+  totalUsageLimit    Int?            @map("total_usage_limit")
+  currentUsageCount  Int             @default(0) @map("current_usage_count")
+  universityIds      Int[]           @map("university_ids")
+  minCourseYear      Int?            @map("min_course_year")
+  isActive           Boolean         @default(true) @map("is_active")
+  isFeatured         Boolean         @default(false) @map("is_featured")
+  isExclusive        Boolean         @default(false) @map("is_exclusive")
+  viewCount          Int             @default(0) @map("view_count")
+  clickCount         Int             @default(0) @map("click_count")
+  conversionRate     Decimal         @default(0.00) @map("conversion_rate") @db.Decimal(5, 2)
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  usages             DiscountUsage[]
+  brand              Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category           Category?       @relation(fields: [categoryId], references: [id])
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([startDate, endDate])
+  @@index([promoCode])
+  @@map("discounts")
+}
+
+model DiscountUsage {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  discountId        String    @map("discount_id") @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  transactionAmount Decimal?  @map("transaction_amount") @db.Decimal(10, 2)
+  discountAmount    Decimal?  @map("discount_amount") @db.Decimal(10, 2)
+  commissionEarned  Decimal?  @map("commission_earned") @db.Decimal(10, 2)
+  ipAddress         String?   @map("ip_address") @db.Inet
+  userAgent         String?   @map("user_agent")
+  deviceType        String?   @map("device_type") @db.VarChar(50)
+  isVerified        Boolean   @default(false) @map("is_verified")
+  verifiedAt        DateTime? @map("verified_at")
+  usedAt            DateTime  @default(now()) @map("used_at")
+  discount          Discount  @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([discountId])
+  @@index([userId])
+  @@map("discount_usages")
+}
+
+model Company {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  slug        String   @unique @db.VarChar(255)
+  logoUrl     String?  @map("logo_url") @db.VarChar(500)
+  bannerUrl   String?  @map("banner_url") @db.VarChar(500)
+  description String?
+  website     String?  @db.VarChar(255)
+  email       String?  @db.VarChar(255)
+  phone       String?  @db.VarChar(20)
+  address     String?
+  industry    String?  @db.VarChar(100)
+  companySize String?  @map("company_size") @db.VarChar(50)
+  foundedYear Int?     @map("founded_year")
+  totalJobs   Int      @default(0) @map("total_jobs")
+  totalHires  Int      @default(0) @map("total_hires")
+  rating      Decimal  @default(0.00) @db.Decimal(3, 2)
+  isActive    Boolean  @default(true) @map("is_active")
+  isVerified  Boolean  @default(false) @map("is_verified")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  jobs        Job[]
+
+  @@index([slug])
+  @@map("companies")
+}
+
+model Job {
+  id                  String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId           Int              @map("company_id")
+  title               String           @db.VarChar(255)
+  description         String
+  requirements        String?
+  responsibilities    String?
+  benefits            String?
+  jobType             JobType          @map("job_type")
+  location            String?          @db.VarChar(255)
+  isRemote            Boolean          @default(false) @map("is_remote")
+  salaryMin           Decimal?         @map("salary_min") @db.Decimal(10, 2)
+  salaryMax           Decimal?         @map("salary_max") @db.Decimal(10, 2)
+  salaryCurrency      String           @default("UZS") @map("salary_currency") @db.VarChar(10)
+  isPaid              Boolean          @default(true) @map("is_paid")
+  minCourseYear       Int?             @map("min_course_year")
+  requiredSkills      String[]         @map("required_skills")
+  preferredSkills     String[]         @map("preferred_skills")
+  languages           String[]
+  applicationDeadline DateTime?        @map("application_deadline")
+  totalPositions      Int              @default(1) @map("total_positions")
+  applicationCount    Int              @default(0) @map("application_count")
+  isActive            Boolean          @default(true) @map("is_active")
+  isFeatured          Boolean          @default(false) @map("is_featured")
+  viewCount           Int              @default(0) @map("view_count")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  closedAt            DateTime?        @map("closed_at")
+  applications        JobApplication[]
+  company             Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([jobType])
+  @@index([applicationDeadline])
+  @@map("jobs")
+}
+
+model JobApplication {
+  id                String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  jobId             String               @map("job_id") @db.Uuid
+  userId            String               @map("user_id") @db.Uuid
+  cvUrl             String?              @map("cv_url") @db.VarChar(500)
+  coverLetter       String?              @map("cover_letter")
+  portfolioUrl      String?              @map("portfolio_url") @db.VarChar(500)
+  expectedSalary    Decimal?             @map("expected_salary") @db.Decimal(10, 2)
+  status            JobApplicationStatus @default(pending)
+  statusUpdatedAt   DateTime?            @map("status_updated_at")
+  statusNotes       String?              @map("status_notes")
+  interviewDate     DateTime?            @map("interview_date")
+  interviewLocation String?              @map("interview_location")
+  interviewNotes    String?              @map("interview_notes")
+  appliedAt         DateTime             @default(now()) @map("applied_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  job               Job                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, userId])
+  @@index([jobId])
+  @@index([userId])
+  @@map("job_applications")
+}
+
+model EducationPartner {
+  id             Int      @id @default(autoincrement())
+  name           String   @db.VarChar(255)
+  slug           String   @unique @db.VarChar(255)
+  logoUrl        String?  @map("logo_url") @db.VarChar(500)
+  bannerUrl      String?  @map("banner_url") @db.VarChar(500)
+  description    String?
+  website        String?  @db.VarChar(255)
+  email          String?  @db.VarChar(255)
+  phone          String?  @db.VarChar(20)
+  address        String?
+  socialMedia    Json?    @map("social_media")
+  totalCourses   Int      @default(0) @map("total_courses")
+  totalStudents  Int      @default(0) @map("total_students")
+  rating         Decimal  @default(0.00) @db.Decimal(3, 2)
+  reviewCount    Int      @default(0) @map("review_count")
+  commissionRate Decimal  @default(10.00) @map("commission_rate") @db.Decimal(5, 2)
+  isActive       Boolean  @default(true) @map("is_active")
+  isVerified     Boolean  @default(false) @map("is_verified")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  courses        Course[]
+
+  @@map("education_partners")
+}
+
+model Course {
+  id                 String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  partnerId          Int                @map("partner_id")
+  categoryId         Int?               @map("category_id")
+  title              String             @db.VarChar(255)
+  slug               String             @unique @db.VarChar(255)
+  description        String?
+  syllabus           String?
+  learningOutcomes   String[]           @map("learning_outcomes")
+  thumbnailUrl       String?            @map("thumbnail_url") @db.VarChar(500)
+  promoVideoUrl      String?            @map("promo_video_url") @db.VarChar(500)
+  level              CourseLevel
+  durationHours      Int?               @map("duration_hours")
+  durationWeeks      Int?               @map("duration_weeks")
+  language           String             @default("uz") @db.VarChar(50)
+  originalPrice      Decimal            @map("original_price") @db.Decimal(10, 2)
+  discountPrice      Decimal?           @map("discount_price") @db.Decimal(10, 2)
+  discountPercentage Int?               @map("discount_percentage")
+  currency           String             @default("UZS") @db.VarChar(10)
+  prerequisites      String[]
+  targetAudience     String[]           @map("target_audience")
+  startDate          DateTime?          @map("start_date") @db.Date
+  endDate            DateTime?          @map("end_date") @db.Date
+  scheduleInfo       String?            @map("schedule_info")
+  enrollmentCount    Int                @default(0) @map("enrollment_count")
+  completionRate     Decimal            @default(0.00) @map("completion_rate") @db.Decimal(5, 2)
+  rating             Decimal            @default(0.00) @db.Decimal(3, 2)
+  reviewCount        Int                @default(0) @map("review_count")
+  isActive           Boolean            @default(true) @map("is_active")
+  isFeatured         Boolean            @default(false) @map("is_featured")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  enrollments        CourseEnrollment[]
+  category           Category?          @relation(fields: [categoryId], references: [id])
+  partner            EducationPartner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
+  @@index([slug])
+  @@map("courses")
+}
+
+model CourseEnrollment {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  courseId           String    @map("course_id") @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  amountPaid         Decimal   @map("amount_paid") @db.Decimal(10, 2)
+  commissionEarned   Decimal?  @map("commission_earned") @db.Decimal(10, 2)
+  paymentMethod      String?   @map("payment_method") @db.VarChar(50)
+  transactionId      String?   @map("transaction_id") @db.VarChar(255)
+  progressPercentage Int       @default(0) @map("progress_percentage")
+  completedAt        DateTime? @map("completed_at")
+  certificateUrl     String?   @map("certificate_url") @db.VarChar(500)
+  status             String    @default("active") @db.VarChar(50)
+  enrolledAt         DateTime  @default(now()) @map("enrolled_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  course             Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([courseId])
+  @@index([userId])
+  @@map("course_enrollments")
+}
+
+model Review {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  reviewableType  String   @map("reviewable_type") @db.VarChar(50)
+  reviewableId    String   @map("reviewable_id") @db.VarChar(255)
+  rating          Int
+  title           String?  @db.VarChar(255)
+  comment         String?
+  pros            String?
+  cons            String?
+  isVerified      Boolean  @default(false) @map("is_verified")
+  isAnonymous     Boolean  @default(false) @map("is_anonymous")
+  isApproved      Boolean  @default(true) @map("is_approved")
+  moderationNotes String?  @map("moderation_notes")
+  helpfulCount    Int      @default(0) @map("helpful_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reviewableType, reviewableId])
+  @@index([userId])
+  @@index([reviewableType, reviewableId])
+  @@map("reviews")
+}
+
+model BlogPost {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  authorId        String?   @map("author_id") @db.Uuid
+  categoryId      Int?      @map("category_id")
+  title           String    @db.VarChar(255)
+  slug            String    @unique @db.VarChar(255)
+  excerpt         String?
+  content         String
+  featuredImage   String?   @map("featured_image") @db.VarChar(500)
+  metaTitle       String?   @map("meta_title") @db.VarChar(255)
+  metaDescription String?   @map("meta_description")
+  metaKeywords    String[]  @map("meta_keywords")
+  viewCount       Int       @default(0) @map("view_count")
+  readTimeMinutes Int?      @map("read_time_minutes")
+  status          String    @default("draft") @db.VarChar(20)
+  publishedAt     DateTime? @map("published_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  author          User?     @relation(fields: [authorId], references: [id])
+  category        Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([slug])
+  @@map("blog_posts")
+}
+
+model Event {
+  id                   String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  organizerId          String?             @map("organizer_id") @db.Uuid
+  title                String              @db.VarChar(255)
+  slug                 String              @unique @db.VarChar(255)
+  description          String?
+  coverImage           String?             @map("cover_image") @db.VarChar(500)
+  eventType            String?             @map("event_type") @db.VarChar(50)
+  location             String?
+  isOnline             Boolean             @default(false) @map("is_online")
+  meetingLink          String?             @map("meeting_link") @db.VarChar(500)
+  startDate            DateTime            @map("start_date")
+  endDate              DateTime            @map("end_date")
+  registrationDeadline DateTime?           @map("registration_deadline")
+  maxParticipants      Int?                @map("max_participants")
+  currentParticipants  Int                 @default(0) @map("current_participants")
+  isFree               Boolean             @default(true) @map("is_free")
+  ticketPrice          Decimal?            @map("ticket_price") @db.Decimal(10, 2)
+  isActive             Boolean             @default(true) @map("is_active")
+  status               String              @default("upcoming") @db.VarChar(20)
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  registrations        EventRegistration[]
+  organizer            User?               @relation(fields: [organizerId], references: [id])
+
+  @@index([slug])
+  @@index([startDate, endDate])
+  @@map("events")
+}
+
+model EventRegistration {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  eventId       String    @map("event_id") @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  status        String    @default("registered") @db.VarChar(20)
+  attendedAt    DateTime? @map("attended_at")
+  amountPaid    Decimal?  @map("amount_paid") @db.Decimal(10, 2)
+  paymentMethod String?   @map("payment_method") @db.VarChar(50)
+  registeredAt  DateTime  @default(now()) @map("registered_at")
+  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("event_registrations")
+}
+
+model Notification {
+  id          String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId      String             @map("user_id") @db.Uuid
+  type        NotificationType
+  title       String             @db.VarChar(255)
+  message     String
+  data        Json?
+  status      NotificationStatus @default(pending)
+  sentAt      DateTime?          @map("sent_at")
+  readAt      DateTime?          @map("read_at")
+  actionUrl   String?            @map("action_url") @db.VarChar(500)
+  actionLabel String?            @map("action_label") @db.VarChar(100)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model Transaction {
+  id                    String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId                String?       @map("user_id") @db.Uuid
+  type                  String        @db.VarChar(50)
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String        @default("UZS") @db.VarChar(10)
+  referenceType         String?       @map("reference_type") @db.VarChar(50)
+  referenceId           String?       @map("reference_id") @db.VarChar(255)
+  paymentMethod         String?       @map("payment_method") @db.VarChar(50)
+  paymentProvider       String?       @map("payment_provider") @db.VarChar(50)
+  externalTransactionId String?       @map("external_transaction_id") @db.VarChar(255)
+  status                PaymentStatus @default(pending)
+  completedAt           DateTime?     @map("completed_at")
+  failedReason          String?       @map("failed_reason")
+  metadata              Json?
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  user                  User?         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([referenceType, referenceId])
+  @@map("transactions")
+}
+
+model AnalyticsEvent {
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId        String?  @map("user_id") @db.Uuid
+  eventName     String   @map("event_name") @db.VarChar(100)
+  eventCategory String?  @map("event_category") @db.VarChar(50)
+  eventLabel    String?  @map("event_label") @db.VarChar(255)
+  eventValue    Decimal? @map("event_value") @db.Decimal(10, 2)
+  pageUrl       String?  @map("page_url")
+  referrer      String?
+  ipAddress     String?  @map("ip_address") @db.Inet
+  userAgent     String?  @map("user_agent")
+  deviceType    String?  @map("device_type") @db.VarChar(50)
+  browser       String?  @db.VarChar(50)
+  os            String?  @db.VarChar(50)
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+  user          User?    @relation(fields: [userId], references: [id])
+
+  @@index([eventName])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
+
+model SavedItem {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  saveableType String   @map("saveable_type") @db.VarChar(50)
+  saveableId   String   @map("saveable_id") @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, saveableType, saveableId])
+  @@index([userId])
+  @@map("saved_items")
+}
+
+model AdminLog {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  adminId      String   @map("admin_id") @db.Uuid
+  action       String   @db.VarChar(100)
+  resourceType String   @map("resource_type") @db.VarChar(50)
+  resourceId   String?  @map("resource_id") @db.VarChar(255)
+  oldValues    Json?    @map("old_values")
+  newValues    Json?    @map("new_values")
+  ipAddress    String?  @map("ip_address") @db.Inet
+  userAgent    String?  @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at")
+  admin        User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@map("admin_logs")
+}
+
+model Subscription {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  planName           String    @map("plan_name") @db.VarChar(50)
+  price              Decimal   @db.Decimal(10, 2)
+  startDate          DateTime  @map("start_date")
+  endDate            DateTime  @map("end_date")
+  status             String    @default("active") @db.VarChar(20)
+  cancelledAt        DateTime? @map("cancelled_at")
+  cancellationReason String?   @map("cancellation_reason")
+  autoRenew          Boolean   @default(true) @map("auto_renew")
+  nextBillingDate    DateTime? @map("next_billing_date")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model SavedSearch {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  name       String    @db.VarChar(255)
+  type       String    @db.VarChar(50)
+  filters    Json
+  isActive   Boolean   @default(true) @map("is_active")
+  lastUsedAt DateTime? @map("last_used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@map("saved_searches")
+}
+
 enum UserVerificationStatus {
-  unverified
-  email_verified
-  pending_verification
+  pending
   verified
-  grace_period
-  verification_expired
   rejected
-  suspended
-  graduated
 
   @@map("user_verification_status")
-}
-
-enum StudentVerificationMethod {
-  university_email
-  student_id_upload
-  university_api
-  manual_review
-
-  @@map("student_verification_method")
-}
-
-enum VerificationRequestStatus {
-  pending
-  approved
-  rejected
-  more_info_needed
-  cancelled
-
-  @@map("verification_request_status")
-}
-
-enum VerificationRequestType {
-  initial
-  reverification
-  appeal
-
-  @@map("verification_request_type")
-}
-
-enum VerificationDocumentType {
-  student_id_front
-  student_id_back
-  enrollment_certificate
-  payment_receipt
-  other
-
-  @@map("verification_document_type")
 }
 
 enum UserRole {
@@ -77,67 +631,8 @@ enum DiscountType {
   percentage
   fixed_amount
   promo_code
-  buy_one_get_one
-  free_item
-  cashback
 
   @@map("discount_type")
-}
-
-enum UsageLimitType {
-  one_time
-  daily
-  weekly
-  monthly
-  unlimited
-
-  @@map("usage_limit_type")
-}
-
-enum ClaimStatus {
-  pending
-  claimed
-  redeemed
-  expired
-  cancelled
-
-  @@map("claim_status")
-}
-
-enum DiscountApprovalStatus {
-  pending
-  approved
-  rejected
-  suspended
-
-  @@map("discount_approval_status")
-}
-
-enum VerificationMethod {
-  promo_code
-  qr_code
-  student_card
-  auto
-
-  @@map("verification_method")
-}
-
-enum FraudAlertType {
-  multiple_accounts
-  unusual_pattern
-  location_mismatch
-  suspicious_activity
-
-  @@map("fraud_alert_type")
-}
-
-enum FraudAlertStatus {
-  pending
-  investigating
-  confirmed
-  dismissed
-
-  @@map("fraud_alert_status")
 }
 
 enum JobType {
@@ -192,2075 +687,4 @@ enum PaymentStatus {
   refunded
 
   @@map("payment_status")
-}
-
-// Blog/Content System Enums
-enum ArticleStatus {
-  draft
-  pending
-  published
-  rejected
-
-  @@map("article_status")
-}
-
-enum ContentBlockType {
-  paragraph
-  heading
-  image
-  code
-  quote
-  list
-  embed
-
-  @@map("content_block_type")
-}
-
-enum TagCategory {
-  study
-  career
-  life
-  tech
-  personal
-
-  @@map("tag_category")
-}
-
-enum BlogNotificationType {
-  new_follower
-  article_clapped
-  new_response
-  response_clapped
-  milestone
-  featured
-
-  @@map("blog_notification_type")
-}
-
-enum SharePlatform {
-  telegram
-  whatsapp
-  facebook
-  twitter
-  copy_link
-  instagram
-
-  @@map("share_platform")
-}
-
-enum ReportReason {
-  spam
-  inappropriate
-  harassment
-  plagiarism
-  other
-
-  @@map("report_reason")
-}
-
-enum ReportStatus {
-  pending
-  reviewed
-  resolved
-  dismissed
-
-  @@map("report_status")
-}
-
-enum DeviceType {
-  mobile
-  desktop
-  tablet
-
-  @@map("device_type")
-}
-
-// Jobs & Events Enhanced Enums
-enum JobPostingType {
-  free
-  premium
-
-  @@map("job_posting_type")
-}
-
-enum JobStatus {
-  draft
-  pending_approval
-  approved
-  rejected
-  active
-  paused
-  closed
-  expired
-
-  @@map("job_status")
-}
-
-enum JobApplicationStatusEnum {
-  applied
-  under_review
-  shortlisted
-  interview_scheduled
-  interviewed
-  hired
-  rejected
-  withdrawn
-
-  @@map("job_application_status_enum")
-}
-
-enum ResumePrivacy {
-  public
-  private
-  employers_only
-
-  @@map("resume_privacy")
-}
-
-enum LanguageProficiency {
-  native
-  fluent
-  intermediate
-  basic
-
-  @@map("language_proficiency")
-}
-
-enum EventStatus {
-  draft
-  pending_review
-  published
-  registration_closed
-  ongoing
-  completed
-  cancelled
-
-  @@map("event_status")
-}
-
-enum EventCategory {
-  career
-  educational
-  tech
-  social
-  sports
-  cultural
-  volunteer
-
-  @@map("event_category")
-}
-
-enum EventOrganizerType {
-  university
-  partner
-  student_club
-  platform
-
-  @@map("event_organizer_type")
-}
-
-enum EventAccessType {
-  free
-  paid
-  invite_only
-  university_only
-  open_to_all
-
-  @@map("event_access_type")
-}
-
-enum RegistrationStatus {
-  registered
-  waitlisted
-  confirmed
-  attended
-  no_show
-  cancelled
-
-  @@map("registration_status")
-}
-
-enum TicketStatus {
-  available
-  reserved
-  sold
-  used
-  refunded
-  cancelled
-
-  @@map("ticket_status")
-}
-
-enum RefundPolicy {
-  full_refund
-  partial_refund
-  no_refund
-
-  @@map("refund_policy")
-}
-
-// ============================================
-// Models
-// ============================================
-
-model University {
-  id                    Int       @id @default(autoincrement())
-  nameUz                String    @map("name_uz") @db.VarChar(255)
-  nameEn                String?   @map("name_en") @db.VarChar(255)
-  nameRu                String?   @map("name_ru") @db.VarChar(255)
-  emailDomain           String?   @unique @map("email_domain") @db.VarChar(100)
-  logoUrl               String?   @map("logo_url") @db.VarChar(500)
-  website               String?   @db.VarChar(255)
-  address               String?   @db.Text
-  city                  String?   @db.VarChar(100)
-  region                String?   @db.VarChar(100)
-  isActive              Boolean   @default(true) @map("is_active")
-  autoVerifyEmail       Boolean   @default(true) @map("auto_verify_email")
-  studentIdFormat       String?   @map("student_id_format") @db.VarChar(100)
-  apiEndpoint           String?   @map("api_endpoint") @db.VarChar(500)
-  apiKey                String?   @map("api_key") @db.VarChar(500)
-  verificationPriority  Int       @default(1) @map("verification_priority")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
-
-  users                 User[]
-  universityDomains     UniversityDomain[]
-
-  @@map("universities")
-}
-
-model UniversityDomain {
-  id            Int         @id @default(autoincrement())
-  universityId  Int         @map("university_id")
-  domain        String      @unique @db.VarChar(100)
-  isActive      Boolean     @default(true) @map("is_active")
-  autoVerify    Boolean     @default(true) @map("auto_verify")
-  createdAt     DateTime    @default(now()) @map("created_at")
-
-  university    University  @relation(fields: [universityId], references: [id], onDelete: Cascade)
-
-  @@index([domain])
-  @@map("university_domains")
-}
-
-model User {
-  id                      String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email                   String                   @unique @db.VarChar(255)
-  phone                   String?                  @unique @db.VarChar(20)
-  passwordHash            String                   @map("password_hash") @db.VarChar(255)
-  firstName               String                   @map("first_name") @db.VarChar(100)
-  lastName                String                   @map("last_name") @db.VarChar(100)
-  middleName              String?                  @map("middle_name") @db.VarChar(100)
-  dateOfBirth             DateTime?                @map("date_of_birth") @db.Date
-  gender                  String?                  @db.VarChar(10)
-  avatarUrl               String?                  @map("avatar_url") @db.VarChar(500)
-  universityId            Int?                     @map("university_id")
-  studentIdNumber         String?                  @map("student_id_number") @db.VarChar(50)
-  studentIdPhoto          String?                  @map("student_id_photo") @db.VarChar(500)
-  faculty                 String?                  @db.VarChar(255)
-  courseYear              Int?                     @map("course_year")
-  graduationYear          Int?                     @map("graduation_year")
-  verificationStatus      UserVerificationStatus   @default(unverified) @map("verification_status")
-  verificationMethod      StudentVerificationMethod? @map("verification_method")
-  verificationDate        DateTime?                @map("verification_date")
-  verificationNotes       String?                  @map("verification_notes") @db.Text
-  verifiedById            String?                  @map("verified_by_id") @db.Uuid
-  expectedGraduationDate  DateTime?                @map("expected_graduation_date") @db.Date
-  lastVerificationDate    DateTime?                @map("last_verification_date")
-  nextVerificationDue     DateTime?                @map("next_verification_due")
-  verificationAttempts    Int                      @default(0) @map("verification_attempts")
-  fraudScore              Int                      @default(0) @map("fraud_score")
-  deviceFingerprint       String?                  @map("device_fingerprint") @db.VarChar(255)
-  lastKnownIp             String?                  @map("last_known_ip") @db.VarChar(45)
-  role                    UserRole                 @default(student)
-  isActive                Boolean                  @default(true) @map("is_active")
-  isEmailVerified         Boolean                  @default(false) @map("is_email_verified")
-  emailVerificationToken  String?                  @map("email_verification_token") @db.VarChar(255)
-  passwordResetToken      String?                  @map("password_reset_token") @db.VarChar(255)
-  passwordResetExpires    DateTime?                @map("password_reset_expires")
-  preferredLanguage       String                   @default("uz") @map("preferred_language") @db.VarChar(10)
-  notificationPreferences Json                     @default("{\"email\": true, \"sms\": false, \"push\": true}") @map("notification_preferences")
-  totalDiscountsUsed      Int                      @default(0) @map("total_discounts_used")
-  totalSavings            Decimal                  @default(0) @map("total_savings") @db.Decimal(10, 2)
-  referralCode            String?                  @unique @map("referral_code") @db.VarChar(20)
-  referredBy              String?                  @map("referred_by") @db.Uuid
-  lastLoginAt             DateTime?                @map("last_login_at")
-  createdAt               DateTime                 @default(now()) @map("created_at")
-  updatedAt               DateTime                 @updatedAt @map("updated_at")
-  deletedAt               DateTime?                @map("deleted_at")
-
-  university              University?              @relation(fields: [universityId], references: [id], onDelete: SetNull)
-  referrer                User?                    @relation("UserReferrals", fields: [referredBy], references: [id], onDelete: SetNull)
-  referrals               User[]                   @relation("UserReferrals")
-  discountUsages          DiscountUsage[]
-  discountClaims          DiscountClaim[]
-  fraudAlerts             FraudAlert[]
-  jobApplications         JobApplication[]
-  courseEnrollments       CourseEnrollment[]
-  reviews                 Review[]
-  blogPosts               BlogPost[]
-  events                  Event[]
-  eventRegistrations      EventRegistration[]
-  notifications           Notification[]
-  transactions            Transaction[]
-  analyticsEvents         AnalyticsEvent[]
-  savedItems              SavedItem[]
-  adminLogs               AdminLog[]
-  subscriptions           Subscription[]
-  savedSearches           SavedSearch[]
-
-  // Blog/Content System Relations
-  studentProfile          StudentProfile?
-  articles                Article[]        @relation("ArticleAuthor")
-  claps                   Clap[]           @relation("UserClaps")
-  responses               Response[]       @relation("UserResponses")
-  responseClaps           ResponseClap[]   @relation("UserResponseClaps")
-  bookmarks               Bookmark[]       @relation("UserBookmarks")
-  bookmarkCollections     BookmarkCollection[] @relation("UserBookmarkCollections")
-  followers               Follow[]         @relation("UserFollowing")
-  following               Follow[]         @relation("UserFollowers")
-  blogNotifications       BlogNotification[] @relation("UserBlogNotifications")
-  actorNotifications      BlogNotification[] @relation("ActorBlogNotifications")
-  articleViews            ArticleView[]    @relation("UserArticleViews")
-  shares                  Share[]          @relation("UserShares")
-  reportsMade             Report[]         @relation("ReportReporter")
-  reportsReviewed         Report[]         @relation("ReportReviewer")
-  drafts                  Draft[]          @relation("UserDrafts")
-
-  // Jobs & Events Enhanced Relations
-  resumes                 Resume[]         @relation("UserResumes")
-  jobSubscriptions        PartnerJobSubscription[] @relation("UserJobSubscriptions")
-  statusChanges           ApplicationStatusHistory[] @relation("StatusChangedBy")
-  jobApprovals            JobApproval[]    @relation("JobApprovalReviewer")
-  eventWaitlist           EventWaitlist[]  @relation("UserEventWaitlist")
-  eventCheckIns           EventCheckIn[]   @relation("CheckedInBy")
-  eventSeries             EventSeries[]    @relation("EventSeriesOrganizer")
-  eventFeedback           EventFeedback[]  @relation("UserEventFeedback")
-  eventCertificates       EventCertificate[] @relation("UserEventCertificates")
-
-  // Verification Relations
-  verificationRequests    VerificationRequest[] @relation("UserVerificationRequests")
-  reviewedVerifications   VerificationRequest[] @relation("ReviewerVerificationRequests")
-  verificationAuditLogs   VerificationAuditLog[] @relation("UserVerificationAuditLogs")
-
-  @@index([email])
-  @@index([phone])
-  @@index([universityId])
-  @@index([verificationStatus])
-  @@index([referralCode])
-  @@index([fraudScore])
-  @@map("users")
-}
-
-// ============================================
-// Verification System Models
-// ============================================
-
-model VerificationRequest {
-  id                String                     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId            String                     @map("user_id") @db.Uuid
-  requestType       VerificationRequestType    @map("request_type")
-  status            VerificationRequestStatus  @default(pending)
-  submittedAt       DateTime                   @default(now()) @map("submitted_at")
-  reviewedAt        DateTime?                  @map("reviewed_at")
-  reviewedById      String?                    @map("reviewed_by_id") @db.Uuid
-  rejectionReason   String?                    @map("rejection_reason") @db.Text
-  adminNotes        String?                    @map("admin_notes") @db.Text
-  userNotes         String?                    @map("user_notes") @db.Text
-  priority          Int                        @default(1)
-  expiresAt         DateTime?                  @map("expires_at")
-  createdAt         DateTime                   @default(now()) @map("created_at")
-  updatedAt         DateTime                   @updatedAt @map("updated_at")
-
-  user              User                       @relation("UserVerificationRequests", fields: [userId], references: [id], onDelete: Cascade)
-  reviewer          User?                      @relation("ReviewerVerificationRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
-  documents         VerificationDocument[]
-
-  @@index([userId])
-  @@index([status])
-  @@index([requestType])
-  @@index([submittedAt])
-  @@map("verification_requests")
-}
-
-model VerificationDocument {
-  id                    String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  verificationRequestId String                   @map("verification_request_id") @db.Uuid
-  documentType          VerificationDocumentType @map("document_type")
-  fileUrl               String                   @map("file_url") @db.VarChar(500)
-  thumbnailUrl          String?                  @map("thumbnail_url") @db.VarChar(500)
-  originalFilename      String?                  @map("original_filename") @db.VarChar(255)
-  mimeType              String?                  @map("mime_type") @db.VarChar(100)
-  fileSize              Int?                     @map("file_size")
-  extractedData         Json?                    @map("extracted_data")
-  uploadedAt            DateTime                 @default(now()) @map("uploaded_at")
-
-  verificationRequest   VerificationRequest      @relation(fields: [verificationRequestId], references: [id], onDelete: Cascade)
-
-  @@index([verificationRequestId])
-  @@map("verification_documents")
-}
-
-model VerificationAuditLog {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  action          String    @db.VarChar(100)
-  previousStatus  String?   @map("previous_status") @db.VarChar(50)
-  newStatus       String?   @map("new_status") @db.VarChar(50)
-  performedById   String?   @map("performed_by_id") @db.Uuid
-  reason          String?   @db.Text
-  metadata        Json?
-  ipAddress       String?   @map("ip_address") @db.VarChar(45)
-  userAgent       String?   @map("user_agent") @db.VarChar(500)
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  user            User      @relation("UserVerificationAuditLogs", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("verification_audit_logs")
-}
-
-model Category {
-  id          Int        @id @default(autoincrement())
-  nameUz      String     @map("name_uz") @db.VarChar(100)
-  nameEn      String?    @map("name_en") @db.VarChar(100)
-  nameRu      String?    @map("name_ru") @db.VarChar(100)
-  slug        String     @unique @db.VarChar(100)
-  icon        String?    @db.VarChar(100)
-  description String?    @db.Text
-  parentId    Int?       @map("parent_id")
-  sortOrder   Int        @default(0) @map("sort_order")
-  isActive    Boolean    @default(true) @map("is_active")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-
-  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children    Category[] @relation("CategoryHierarchy")
-  brands      Brand[]
-  discounts   Discount[]
-  courses     Course[]
-  blogPosts   BlogPost[]
-
-  @@index([slug])
-  @@index([parentId])
-  @@map("categories")
-}
-
-model Brand {
-  id             Int        @id @default(autoincrement())
-  name           String     @db.VarChar(255)
-  slug           String     @unique @db.VarChar(255)
-  logoUrl        String?    @map("logo_url") @db.VarChar(500)
-  bannerUrl      String?    @map("banner_url") @db.VarChar(500)
-  description    String?    @db.Text
-  website        String?    @db.VarChar(255)
-  contactEmail   String?    @map("contact_email") @db.VarChar(255)
-  contactPhone   String?    @map("contact_phone") @db.VarChar(20)
-  socialMedia    Json?      @map("social_media")
-  categoryId     Int?       @map("category_id")
-  commissionRate Decimal    @default(5.00) @map("commission_rate") @db.Decimal(5, 2)
-  totalDiscounts Int        @default(0) @map("total_discounts")
-  totalSales     Int        @default(0) @map("total_sales")
-  rating         Decimal    @default(0.00) @db.Decimal(3, 2)
-  reviewCount    Int        @default(0) @map("review_count")
-  isActive       Boolean    @default(true) @map("is_active")
-  isFeatured     Boolean    @default(false) @map("is_featured")
-  featuredUntil  DateTime?  @map("featured_until")
-  createdAt      DateTime   @default(now()) @map("created_at")
-  updatedAt      DateTime   @updatedAt @map("updated_at")
-
-  category       Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  discounts      Discount[]
-
-  @@index([slug])
-  @@index([categoryId])
-  @@map("brands")
-}
-
-model Discount {
-  id                  String                  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  brandId             Int                     @map("brand_id")
-  categoryId          Int?                    @map("category_id")
-  title               String                  @db.VarChar(255)
-  description         String?                 @db.Text
-  termsAndConditions  String?                 @map("terms_and_conditions") @db.Text
-  howToUse            String?                 @map("how_to_use") @db.Text
-  imageUrl            String?                 @map("image_url") @db.VarChar(500)
-  discountType        DiscountType            @map("discount_type")
-  discountValue       Decimal                 @map("discount_value") @db.Decimal(10, 2)
-  minPurchaseAmount   Decimal?                @map("min_purchase_amount") @db.Decimal(10, 2)
-  maxDiscountAmount   Decimal?                @map("max_discount_amount") @db.Decimal(10, 2)
-  promoCode           String?                 @map("promo_code") @db.VarChar(50)
-  startDate           DateTime                @map("start_date")
-  endDate             DateTime                @map("end_date")
-  usageLimitPerUser   Int                     @default(1) @map("usage_limit_per_user")
-  totalUsageLimit     Int?                    @map("total_usage_limit")
-  currentUsageCount   Int                     @default(0) @map("current_usage_count")
-  universityIds       Int[]                   @map("university_ids")
-  minCourseYear       Int?                    @map("min_course_year")
-  isActive            Boolean                 @default(true) @map("is_active")
-  isFeatured          Boolean                 @default(false) @map("is_featured")
-  isExclusive         Boolean                 @default(false) @map("is_exclusive")
-  viewCount           Int                     @default(0) @map("view_count")
-  clickCount          Int                     @default(0) @map("click_count")
-  conversionRate      Decimal                 @default(0.00) @map("conversion_rate") @db.Decimal(5, 2)
-  createdAt           DateTime                @default(now()) @map("created_at")
-  updatedAt           DateTime                @updatedAt @map("updated_at")
-
-  // New fields for extended discount system
-  usageLimitType      UsageLimitType          @default(one_time) @map("usage_limit_type")
-  dailyClaimLimit     Int?                    @map("daily_claim_limit")
-  weeklyClaimLimit    Int?                    @map("weekly_claim_limit")
-  monthlyClaimLimit   Int?                    @map("monthly_claim_limit")
-
-  // BOGO and Free Item fields
-  bogoProductName     String?                 @map("bogo_product_name") @db.VarChar(255)
-  freeItemName        String?                 @map("free_item_name") @db.VarChar(255)
-  freeItemValue       Decimal?                @map("free_item_value") @db.Decimal(10, 2)
-
-  // Cashback fields
-  cashbackPercentage  Decimal?                @map("cashback_percentage") @db.Decimal(5, 2)
-  maxCashbackAmount   Decimal?                @map("max_cashback_amount") @db.Decimal(10, 2)
-  cashbackDelayDays   Int?                    @map("cashback_delay_days")
-
-  // Time restrictions
-  activeTimeStart     String?                 @map("active_time_start") @db.VarChar(5) // HH:mm
-  activeTimeEnd       String?                 @map("active_time_end") @db.VarChar(5)   // HH:mm
-  activeDaysOfWeek    Int[]                   @map("active_days_of_week") // 0-6 (Sunday-Saturday)
-
-  // Targeting
-  isFirstTimeOnly     Boolean                 @default(false) @map("is_first_time_only")
-  isReferralBonus     Boolean                 @default(false) @map("is_referral_bonus")
-  referralBonusValue  Decimal?                @map("referral_bonus_value") @db.Decimal(10, 2)
-  specificProducts    String[]                @map("specific_products")
-
-  // Location restrictions
-  allowedCities       String[]                @map("allowed_cities")
-  allowedRegions      String[]                @map("allowed_regions")
-  requiresLocation    Boolean                 @default(false) @map("requires_location")
-  locationRadius      Int?                    @map("location_radius") // in meters
-  locationLat         Decimal?                @map("location_lat") @db.Decimal(10, 7)
-  locationLng         Decimal?                @map("location_lng") @db.Decimal(10, 7)
-
-  // Approval workflow
-  approvalStatus      DiscountApprovalStatus  @default(pending) @map("approval_status")
-  approvedAt          DateTime?               @map("approved_at")
-  approvedBy          String?                 @map("approved_by") @db.Uuid
-  rejectionReason     String?                 @map("rejection_reason") @db.Text
-
-  // Verification method
-  verificationMethod  VerificationMethod      @default(promo_code) @map("verification_method")
-  claimExpiryHours    Int                     @default(24) @map("claim_expiry_hours")
-  requiresPartnerVerification Boolean         @default(true) @map("requires_partner_verification")
-
-  // Analytics
-  totalClaimsCount    Int                     @default(0) @map("total_claims_count")
-  totalRedemptions    Int                     @default(0) @map("total_redemptions")
-  totalSavingsGenerated Decimal               @default(0) @map("total_savings_generated") @db.Decimal(12, 2)
-  avgTransactionAmount Decimal?               @map("avg_transaction_amount") @db.Decimal(10, 2)
-
-  // Monetization
-  listingFee          Decimal?                @map("listing_fee") @db.Decimal(10, 2)
-  performanceFee      Decimal?                @map("performance_fee") @db.Decimal(10, 2)
-  featuredPlacementFee Decimal?               @map("featured_placement_fee") @db.Decimal(10, 2)
-
-  // Seasonal/Dynamic
-  seasonalTag         String?                 @map("seasonal_tag") @db.VarChar(50)
-  priorityScore       Int                     @default(0) @map("priority_score")
-
-  brand               Brand                   @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  category            Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  usages              DiscountUsage[]
-  claims              DiscountClaim[]
-  fraudAlerts         FraudAlert[]
-
-  @@index([brandId])
-  @@index([categoryId])
-  @@index([startDate, endDate])
-  @@index([promoCode])
-  @@index([approvalStatus])
-  @@index([isActive, approvalStatus])
-  @@index([allowedCities])
-  @@index([seasonalTag])
-  @@map("discounts")
-}
-
-model DiscountUsage {
-  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  discountId        String    @map("discount_id") @db.Uuid
-  userId            String    @map("user_id") @db.Uuid
-  transactionAmount Decimal?  @map("transaction_amount") @db.Decimal(10, 2)
-  discountAmount    Decimal?  @map("discount_amount") @db.Decimal(10, 2)
-  commissionEarned  Decimal?  @map("commission_earned") @db.Decimal(10, 2)
-  ipAddress         String?   @map("ip_address") @db.Inet
-  userAgent         String?   @map("user_agent") @db.Text
-  deviceType        String?   @map("device_type") @db.VarChar(50)
-  isVerified        Boolean   @default(false) @map("is_verified")
-  verifiedAt        DateTime? @map("verified_at")
-  usedAt            DateTime  @default(now()) @map("used_at")
-
-  discount          Discount  @relation(fields: [discountId], references: [id], onDelete: Cascade)
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([discountId])
-  @@index([userId])
-  @@map("discount_usages")
-}
-
-model DiscountClaim {
-  id                String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  discountId        String        @map("discount_id") @db.Uuid
-  userId            String        @map("user_id") @db.Uuid
-
-  // Generated codes
-  claimCode         String        @unique @map("claim_code") @db.VarChar(20)
-  qrCode            String?       @map("qr_code") @db.Text
-
-  // Status tracking
-  status            ClaimStatus   @default(claimed)
-  claimedAt         DateTime      @default(now()) @map("claimed_at")
-  expiresAt         DateTime      @map("expires_at")
-  redeemedAt        DateTime?     @map("redeemed_at")
-  cancelledAt       DateTime?     @map("cancelled_at")
-
-  // Verification
-  verifiedBy        String?       @map("verified_by") @db.Uuid
-  verificationNotes String?       @map("verification_notes") @db.Text
-
-  // Transaction details
-  transactionAmount Decimal?      @map("transaction_amount") @db.Decimal(10, 2)
-  discountAmount    Decimal?      @map("discount_amount") @db.Decimal(10, 2)
-  cashbackAmount    Decimal?      @map("cashback_amount") @db.Decimal(10, 2)
-  cashbackPaidAt    DateTime?     @map("cashback_paid_at")
-
-  // Device tracking
-  ipAddress         String?       @map("ip_address") @db.Inet
-  userAgent         String?       @map("user_agent") @db.Text
-  deviceType        String?       @map("device_type") @db.VarChar(50)
-  deviceId          String?       @map("device_id") @db.VarChar(255)
-
-  // Location
-  claimLat          Decimal?      @map("claim_lat") @db.Decimal(10, 7)
-  claimLng          Decimal?      @map("claim_lng") @db.Decimal(10, 7)
-  redeemLat         Decimal?      @map("redeem_lat") @db.Decimal(10, 7)
-  redeemLng         Decimal?      @map("redeem_lng") @db.Decimal(10, 7)
-
-  discount          Discount      @relation(fields: [discountId], references: [id], onDelete: Cascade)
-  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([discountId])
-  @@index([userId])
-  @@index([claimCode])
-  @@index([status])
-  @@index([expiresAt])
-  @@map("discount_claims")
-}
-
-model FraudAlert {
-  id              String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId          String?          @map("user_id") @db.Uuid
-  discountId      String?          @map("discount_id") @db.Uuid
-
-  alertType       FraudAlertType   @map("alert_type")
-  status          FraudAlertStatus @default(pending)
-
-  // Alert details
-  description     String           @db.Text
-  severity        Int              @default(1) // 1-5
-  evidence        Json?            // Store relevant data
-
-  // Device/IP info
-  ipAddress       String?          @map("ip_address") @db.Inet
-  deviceId        String?          @map("device_id") @db.VarChar(255)
-  userAgent       String?          @map("user_agent") @db.Text
-
-  // Investigation
-  investigatedBy  String?          @map("investigated_by") @db.Uuid
-  investigatedAt  DateTime?        @map("investigated_at")
-  resolution      String?          @db.Text
-  actionTaken     String?          @map("action_taken") @db.VarChar(100)
-
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
-
-  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  discount        Discount?        @relation(fields: [discountId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([discountId])
-  @@index([status])
-  @@index([alertType])
-  @@map("fraud_alerts")
-}
-
-model PartnerAnalytics {
-  id                   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  brandId              Int      @map("brand_id")
-  date                 DateTime @db.Date
-
-  // Daily metrics
-  totalViews           Int      @default(0) @map("total_views")
-  totalClicks          Int      @default(0) @map("total_clicks")
-  totalClaims          Int      @default(0) @map("total_claims")
-  totalRedemptions     Int      @default(0) @map("total_redemptions")
-  totalRevenue         Decimal  @default(0) @map("total_revenue") @db.Decimal(12, 2)
-  totalCommission      Decimal  @default(0) @map("total_commission") @db.Decimal(10, 2)
-
-  // Conversion metrics
-  claimRate            Decimal  @default(0) @map("claim_rate") @db.Decimal(5, 2)
-  redemptionRate       Decimal  @default(0) @map("redemption_rate") @db.Decimal(5, 2)
-
-  // Demographics
-  topUniversities      Json?    @map("top_universities")
-  topCategories        Json?    @map("top_categories")
-  peakHours            Json?    @map("peak_hours")
-
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
-
-  @@unique([brandId, date])
-  @@index([brandId])
-  @@index([date])
-  @@map("partner_analytics")
-}
-
-model StudentAnalytics {
-  id                   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId               String   @map("user_id") @db.Uuid
-  month                DateTime @db.Date // First day of month
-
-  // Monthly metrics
-  totalDiscountsClaimed Int     @default(0) @map("total_discounts_claimed")
-  totalDiscountsRedeemed Int    @default(0) @map("total_discounts_redeemed")
-  totalSavings         Decimal  @default(0) @map("total_savings") @db.Decimal(10, 2)
-  totalCashback        Decimal  @default(0) @map("total_cashback") @db.Decimal(10, 2)
-  totalSpent           Decimal  @default(0) @map("total_spent") @db.Decimal(10, 2)
-
-  // Preferences
-  topCategories        Json?    @map("top_categories")
-  topBrands            Json?    @map("top_brands")
-  avgDiscountValue     Decimal? @map("avg_discount_value") @db.Decimal(5, 2)
-
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
-
-  @@unique([userId, month])
-  @@index([userId])
-  @@index([month])
-  @@map("student_analytics")
-}
-
-model Company {
-  id          Int       @id @default(autoincrement())
-  name        String    @db.VarChar(255)
-  slug        String    @unique @db.VarChar(255)
-  logoUrl     String?   @map("logo_url") @db.VarChar(500)
-  bannerUrl   String?   @map("banner_url") @db.VarChar(500)
-  description String?   @db.Text
-  website     String?   @db.VarChar(255)
-  email       String?   @db.VarChar(255)
-  phone       String?   @db.VarChar(20)
-  address     String?   @db.Text
-  industry    String?   @db.VarChar(100)
-  companySize String?   @map("company_size") @db.VarChar(50)
-  foundedYear Int?      @map("founded_year")
-  totalJobs   Int       @default(0) @map("total_jobs")
-  totalHires  Int       @default(0) @map("total_hires")
-  rating      Decimal   @default(0.00) @db.Decimal(3, 2)
-  isActive    Boolean   @default(true) @map("is_active")
-  isVerified  Boolean   @default(false) @map("is_verified")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  jobs        Job[]
-
-  @@index([slug])
-  @@map("companies")
-}
-
-model Job {
-  id                   String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  companyId            Int              @map("company_id")
-  categoryId           Int?             @map("category_id")
-  title                String           @db.VarChar(255)
-  description          String           @db.Text
-  requirements         String?          @db.Text
-  responsibilities     String?          @db.Text
-  benefits             String?          @db.Text
-  jobType              JobType          @map("job_type")
-  location             String?          @db.VarChar(255)
-  isRemote             Boolean          @default(false) @map("is_remote")
-  salaryMin            Decimal?         @map("salary_min") @db.Decimal(10, 2)
-  salaryMax            Decimal?         @map("salary_max") @db.Decimal(10, 2)
-  salaryCurrency       String           @default("UZS") @map("salary_currency") @db.VarChar(10)
-  isPaid               Boolean          @default(true) @map("is_paid")
-  minCourseYear        Int?             @map("min_course_year")
-  requiredSkills       String[]         @map("required_skills")
-  preferredSkills      String[]         @map("preferred_skills")
-  languages            String[]
-  applicationDeadline  DateTime?        @map("application_deadline")
-  totalPositions       Int              @default(1) @map("total_positions")
-  applicationCount     Int              @default(0) @map("application_count")
-  isActive             Boolean          @default(true) @map("is_active")
-  isFeatured           Boolean          @default(false) @map("is_featured")
-  viewCount            Int              @default(0) @map("view_count")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  closedAt             DateTime?        @map("closed_at")
-
-  // Enhanced fields
-  postingType          JobPostingType   @default(free) @map("posting_type")
-  status               JobStatus        @default(draft)
-  expiresAt            DateTime?        @map("expires_at")
-  featuredUntil        DateTime?        @map("featured_until")
-  experienceLevel      String?          @map("experience_level") @db.VarChar(50) // Entry, Junior, Mid, Senior
-  educationLevel       String?          @map("education_level") @db.VarChar(50)
-  workSchedule         String?          @map("work_schedule") @db.VarChar(100) // Full-time, Part-time, Flexible
-  contactEmail         String?          @map("contact_email") @db.VarChar(255)
-  contactPhone         String?          @map("contact_phone") @db.VarChar(20)
-  howToApply           String?          @map("how_to_apply") @db.Text
-  externalUrl          String?          @map("external_url") @db.VarChar(500)
-  universityIds        Int[]            @map("university_ids") // Target specific universities
-  shareCount           Int              @default(0) @map("share_count")
-  saveCount            Int              @default(0) @map("save_count")
-  approvedAt           DateTime?        @map("approved_at")
-  approvedBy           String?          @map("approved_by") @db.Uuid
-  rejectionReason      String?          @map("rejection_reason") @db.Text
-  matchScore           Int?             @map("match_score") // For recommendation system
-
-  company              Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  category             JobCategory?     @relation("JobCategoryRelation", fields: [categoryId], references: [id], onDelete: SetNull)
-  applications         JobApplication[]
-  analytics            JobAnalytics[]   @relation("JobAnalyticsRelation")
-  approvals            JobApproval[]    @relation("JobApprovalHistory")
-
-  @@index([companyId])
-  @@index([categoryId])
-  @@index([jobType])
-  @@index([applicationDeadline])
-  @@index([status])
-  @@index([postingType])
-  @@index([expiresAt])
-  @@map("jobs")
-}
-
-model JobApplication {
-  id              String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  jobId           String               @map("job_id") @db.Uuid
-  userId          String               @map("user_id") @db.Uuid
-  resumeId        String?              @map("resume_id") @db.Uuid
-  cvUrl           String?              @map("cv_url") @db.VarChar(500)
-  coverLetter     String?              @map("cover_letter") @db.Text
-  portfolioUrl    String?              @map("portfolio_url") @db.VarChar(500)
-  expectedSalary  Decimal?             @map("expected_salary") @db.Decimal(10, 2)
-  status          JobApplicationStatus @default(pending)
-  statusUpdatedAt DateTime?            @map("status_updated_at")
-  statusNotes     String?              @map("status_notes") @db.Text
-  interviewDate   DateTime?            @map("interview_date")
-  interviewLocation String?            @map("interview_location") @db.Text
-  interviewNotes  String?              @map("interview_notes") @db.Text
-  appliedAt       DateTime             @default(now()) @map("applied_at")
-  updatedAt       DateTime             @updatedAt @map("updated_at")
-
-  // Enhanced fields
-  applicationStatus JobApplicationStatusEnum @default(applied) @map("application_status")
-  partnerNotes      String?              @map("partner_notes") @db.Text // Internal notes for partner
-  viewedAt          DateTime?            @map("viewed_at")
-  viewedBy          String?              @map("viewed_by") @db.Uuid
-  shortlistedAt     DateTime?            @map("shortlisted_at")
-  rejectedAt        DateTime?            @map("rejected_at")
-  hiredAt           DateTime?            @map("hired_at")
-  withdrawnAt       DateTime?            @map("withdrawn_at")
-  withdrawalReason  String?              @map("withdrawal_reason") @db.Text
-  availableStartDate DateTime?           @map("available_start_date") @db.Date
-  answers           Json?                // Answers to custom questions
-  matchScore        Int?                 @map("match_score") // How well student matches job
-  interviewType     String?              @map("interview_type") @db.VarChar(50) // phone, video, onsite
-  interviewMeetingLink String?           @map("interview_meeting_link") @db.VarChar(500)
-  interviewFeedback String?              @map("interview_feedback") @db.Text
-  offerSalary       Decimal?             @map("offer_salary") @db.Decimal(10, 2)
-  offerSentAt       DateTime?            @map("offer_sent_at")
-  offerResponseAt   DateTime?            @map("offer_response_at")
-  offerAccepted     Boolean?             @map("offer_accepted")
-
-  job             Job                  @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  resume          Resume?              @relation("ApplicationResume", fields: [resumeId], references: [id], onDelete: SetNull)
-  statusHistory   ApplicationStatusHistory[] @relation("ApplicationStatusHistory")
-
-  @@unique([jobId, userId])
-  @@index([jobId])
-  @@index([userId])
-  @@index([resumeId])
-  @@index([applicationStatus])
-  @@map("job_applications")
-}
-
-model EducationPartner {
-  id             Int       @id @default(autoincrement())
-  name           String    @db.VarChar(255)
-  slug           String    @unique @db.VarChar(255)
-  logoUrl        String?   @map("logo_url") @db.VarChar(500)
-  bannerUrl      String?   @map("banner_url") @db.VarChar(500)
-  description    String?   @db.Text
-  website        String?   @db.VarChar(255)
-  email          String?   @db.VarChar(255)
-  phone          String?   @db.VarChar(20)
-  address        String?   @db.Text
-  socialMedia    Json?     @map("social_media")
-  totalCourses   Int       @default(0) @map("total_courses")
-  totalStudents  Int       @default(0) @map("total_students")
-  rating         Decimal   @default(0.00) @db.Decimal(3, 2)
-  reviewCount    Int       @default(0) @map("review_count")
-  commissionRate Decimal   @default(10.00) @map("commission_rate") @db.Decimal(5, 2)
-  isActive       Boolean   @default(true) @map("is_active")
-  isVerified     Boolean   @default(false) @map("is_verified")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-
-  courses        Course[]
-
-  @@map("education_partners")
-}
-
-model Course {
-  id                 String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  partnerId          Int                @map("partner_id")
-  categoryId         Int?               @map("category_id")
-  title              String             @db.VarChar(255)
-  slug               String             @unique @db.VarChar(255)
-  description        String?            @db.Text
-  syllabus           String?            @db.Text
-  learningOutcomes   String[]           @map("learning_outcomes")
-  thumbnailUrl       String?            @map("thumbnail_url") @db.VarChar(500)
-  promoVideoUrl      String?            @map("promo_video_url") @db.VarChar(500)
-  level              CourseLevel
-  durationHours      Int?               @map("duration_hours")
-  durationWeeks      Int?               @map("duration_weeks")
-  language           String             @default("uz") @db.VarChar(50)
-  originalPrice      Decimal            @map("original_price") @db.Decimal(10, 2)
-  discountPrice      Decimal?           @map("discount_price") @db.Decimal(10, 2)
-  discountPercentage Int?               @map("discount_percentage")
-  currency           String             @default("UZS") @db.VarChar(10)
-  prerequisites      String[]
-  targetAudience     String[]           @map("target_audience")
-  startDate          DateTime?          @map("start_date") @db.Date
-  endDate            DateTime?          @map("end_date") @db.Date
-  scheduleInfo       String?            @map("schedule_info") @db.Text
-  enrollmentCount    Int                @default(0) @map("enrollment_count")
-  completionRate     Decimal            @default(0.00) @map("completion_rate") @db.Decimal(5, 2)
-  rating             Decimal            @default(0.00) @db.Decimal(3, 2)
-  reviewCount        Int                @default(0) @map("review_count")
-  isActive           Boolean            @default(true) @map("is_active")
-  isFeatured         Boolean            @default(false) @map("is_featured")
-  createdAt          DateTime           @default(now()) @map("created_at")
-  updatedAt          DateTime           @updatedAt @map("updated_at")
-
-  partner            EducationPartner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  category           Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  enrollments        CourseEnrollment[]
-
-  @@index([partnerId])
-  @@index([slug])
-  @@map("courses")
-}
-
-model CourseEnrollment {
-  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  courseId         String    @map("course_id") @db.Uuid
-  userId           String    @map("user_id") @db.Uuid
-  amountPaid       Decimal   @map("amount_paid") @db.Decimal(10, 2)
-  commissionEarned Decimal?  @map("commission_earned") @db.Decimal(10, 2)
-  paymentMethod    String?   @map("payment_method") @db.VarChar(50)
-  transactionId    String?   @map("transaction_id") @db.VarChar(255)
-  progressPercentage Int     @default(0) @map("progress_percentage")
-  completedAt      DateTime? @map("completed_at")
-  certificateUrl   String?   @map("certificate_url") @db.VarChar(500)
-  status           String    @default("active") @db.VarChar(50)
-  enrolledAt       DateTime  @default(now()) @map("enrolled_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-
-  course           Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([courseId, userId])
-  @@index([courseId])
-  @@index([userId])
-  @@map("course_enrollments")
-}
-
-model Review {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  reviewableType  String    @map("reviewable_type") @db.VarChar(50)
-  reviewableId    String    @map("reviewable_id") @db.VarChar(255)
-  rating          Int       @db.Integer
-  title           String?   @db.VarChar(255)
-  comment         String?   @db.Text
-  pros            String?   @db.Text
-  cons            String?   @db.Text
-  isVerified      Boolean   @default(false) @map("is_verified")
-  isAnonymous     Boolean   @default(false) @map("is_anonymous")
-  isApproved      Boolean   @default(true) @map("is_approved")
-  moderationNotes String?   @map("moderation_notes") @db.Text
-  helpfulCount    Int       @default(0) @map("helpful_count")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, reviewableType, reviewableId])
-  @@index([userId])
-  @@index([reviewableType, reviewableId])
-  @@map("reviews")
-}
-
-model BlogPost {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  authorId        String?   @map("author_id") @db.Uuid
-  categoryId      Int?      @map("category_id")
-  title           String    @db.VarChar(255)
-  slug            String    @unique @db.VarChar(255)
-  excerpt         String?   @db.Text
-  content         String    @db.Text
-  featuredImage   String?   @map("featured_image") @db.VarChar(500)
-  metaTitle       String?   @map("meta_title") @db.VarChar(255)
-  metaDescription String?   @map("meta_description") @db.Text
-  metaKeywords    String[]  @map("meta_keywords")
-  viewCount       Int       @default(0) @map("view_count")
-  readTimeMinutes Int?      @map("read_time_minutes")
-  status          String    @default("draft") @db.VarChar(20)
-  featured        Boolean   @default(false)
-  publishedAt     DateTime? @map("published_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  author          User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-
-  @@index([slug])
-  @@index([authorId])
-  @@index([categoryId])
-  @@index([status])
-  @@map("blog_posts")
-}
-
-model Event {
-  id                   String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  organizerId          String?             @map("organizer_id") @db.Uuid
-  seriesId             String?             @map("series_id") @db.Uuid
-  title                String              @db.VarChar(255)
-  slug                 String              @unique @db.VarChar(255)
-  description          String?             @db.Text
-  shortDescription     String?             @map("short_description") @db.VarChar(300)
-  coverImage           String?             @map("cover_image") @db.VarChar(500)
-  eventType            String?             @map("event_type") @db.VarChar(50)
-  location             String?             @db.Text
-  isOnline             Boolean             @default(false) @map("is_online")
-  meetingLink          String?             @map("meeting_link") @db.VarChar(500)
-  startDate            DateTime            @map("start_date")
-  endDate              DateTime            @map("end_date")
-  registrationDeadline DateTime?           @map("registration_deadline")
-  maxParticipants      Int?                @map("max_participants")
-  currentParticipants  Int                 @default(0) @map("current_participants")
-  isFree               Boolean             @default(true) @map("is_free")
-  ticketPrice          Decimal?            @map("ticket_price") @db.Decimal(10, 2)
-  isActive             Boolean             @default(true) @map("is_active")
-  status               String              @default("upcoming") @db.VarChar(20)
-  createdAt            DateTime            @default(now()) @map("created_at")
-  updatedAt            DateTime            @updatedAt @map("updated_at")
-
-  // Enhanced fields
-  eventStatus          EventStatus         @default(draft) @map("event_status")
-  category             EventCategory?
-  organizerType        EventOrganizerType  @default(partner) @map("organizer_type")
-  accessType           EventAccessType     @default(open_to_all) @map("access_type")
-  venueName            String?             @map("venue_name") @db.VarChar(255)
-  venueAddress         String?             @map("venue_address") @db.Text
-  venueLat             Decimal?            @map("venue_lat") @db.Decimal(10, 7)
-  venueLng             Decimal?            @map("venue_lng") @db.Decimal(10, 7)
-  timezone             String              @default("Asia/Tashkent") @db.VarChar(50)
-  isMultiDay           Boolean             @default(false) @map("is_multi_day")
-  registrationStartDate DateTime?          @map("registration_start_date")
-  waitlistEnabled      Boolean             @default(false) @map("waitlist_enabled")
-  waitlistCount        Int                 @default(0) @map("waitlist_count")
-  universityIds        Int[]               @map("university_ids") // Restrict to specific universities
-  minCourseYear        Int?                @map("min_course_year")
-  maxCourseYear        Int?                @map("max_course_year")
-  contactEmail         String?             @map("contact_email") @db.VarChar(255)
-  contactPhone         String?             @map("contact_phone") @db.VarChar(20)
-  termsAndConditions   String?             @map("terms_and_conditions") @db.Text
-  faq                  Json?               // Frequently asked questions
-  customQuestions      Json?               @map("custom_questions") // Registration form questions
-  socialMediaShare     Boolean             @default(true) @map("social_media_share")
-  refundPolicy         RefundPolicy        @default(no_refund) @map("refund_policy")
-  refundDeadlineDays   Int?                @map("refund_deadline_days")
-  checkInRadius        Int?                @map("check_in_radius") // For geo-fenced check-in
-  certificateEnabled   Boolean             @default(false) @map("certificate_enabled")
-  viewCount            Int                 @default(0) @map("view_count")
-  shareCount           Int                 @default(0) @map("share_count")
-  isFeatured           Boolean             @default(false) @map("is_featured")
-  featuredUntil        DateTime?           @map("featured_until")
-  approvedAt           DateTime?           @map("approved_at")
-  approvedBy           String?             @map("approved_by") @db.Uuid
-  rejectionReason      String?             @map("rejection_reason") @db.Text
-  cancelledAt          DateTime?           @map("cancelled_at")
-  cancellationReason   String?             @map("cancellation_reason") @db.Text
-
-  organizer            User?               @relation(fields: [organizerId], references: [id], onDelete: SetNull)
-  series               EventSeries?        @relation("SeriesEvents", fields: [seriesId], references: [id], onDelete: SetNull)
-  registrations        EventRegistration[]
-  ticketTypes          EventTicketType[]   @relation("EventTicketTypes")
-  waitlist             EventWaitlist[]     @relation("EventWaitlistRelation")
-  speakers             EventSpeaker[]      @relation("EventSpeakers")
-  sponsors             EventSponsor[]      @relation("EventSponsors")
-  agenda               EventAgendaItem[]   @relation("EventAgenda")
-  analytics            EventAnalytics[]    @relation("EventAnalyticsRelation")
-  feedback             EventFeedback[]     @relation("EventFeedbackRelation")
-  certificates         EventCertificate[]  @relation("EventCertificates")
-
-  @@index([slug])
-  @@index([startDate, endDate])
-  @@index([eventStatus])
-  @@index([category])
-  @@index([seriesId])
-  @@map("events")
-}
-
-model EventRegistration {
-  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  eventId       String    @map("event_id") @db.Uuid
-  userId        String    @map("user_id") @db.Uuid
-  status        String    @default("registered") @db.VarChar(20)
-  attendedAt    DateTime? @map("attended_at")
-  amountPaid    Decimal?  @map("amount_paid") @db.Decimal(10, 2)
-  paymentMethod String?   @map("payment_method") @db.VarChar(50)
-  registeredAt  DateTime  @default(now()) @map("registered_at")
-
-  // Enhanced fields
-  registrationStatus  RegistrationStatus @default(registered) @map("registration_status")
-  confirmationCode    String             @unique @map("confirmation_code") @db.VarChar(20)
-  qrCode              String?            @map("qr_code") @db.Text
-  transactionId       String?            @map("transaction_id") @db.VarChar(255)
-  ticketQuantity      Int                @default(1) @map("ticket_quantity")
-  answers             Json?              // Answers to custom questions
-  checkedInAt         DateTime?          @map("checked_in_at")
-  checkedInBy         String?            @map("checked_in_by") @db.Uuid
-  cancelledAt         DateTime?          @map("cancelled_at")
-  cancellationReason  String?            @map("cancellation_reason") @db.Text
-  refundedAt          DateTime?          @map("refunded_at")
-  refundAmount        Decimal?           @map("refund_amount") @db.Decimal(10, 2)
-  reminderSentAt      DateTime?          @map("reminder_sent_at")
-  feedbackRequestSentAt DateTime?        @map("feedback_request_sent_at")
-
-  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tickets       EventTicket[] @relation("RegistrationTickets")
-  checkIns      EventCheckIn[] @relation("RegistrationCheckIns")
-
-  @@unique([eventId, userId])
-  @@index([confirmationCode])
-  @@index([registrationStatus])
-  @@map("event_registrations")
-}
-
-model Notification {
-  id          String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId      String             @map("user_id") @db.Uuid
-  type        NotificationType
-  title       String             @db.VarChar(255)
-  message     String             @db.Text
-  data        Json?
-  status      NotificationStatus @default(pending)
-  sentAt      DateTime?          @map("sent_at")
-  readAt      DateTime?          @map("read_at")
-  actionUrl   String?            @map("action_url") @db.VarChar(500)
-  actionLabel String?            @map("action_label") @db.VarChar(100)
-  createdAt   DateTime           @default(now()) @map("created_at")
-
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("notifications")
-}
-
-model Transaction {
-  id                    String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId                String?       @map("user_id") @db.Uuid
-  type                  String        @db.VarChar(50)
-  amount                Decimal       @db.Decimal(10, 2)
-  currency              String        @default("UZS") @db.VarChar(10)
-  referenceType         String?       @map("reference_type") @db.VarChar(50)
-  referenceId           String?       @map("reference_id") @db.VarChar(255)
-  paymentMethod         String?       @map("payment_method") @db.VarChar(50)
-  paymentProvider       String?       @map("payment_provider") @db.VarChar(50)
-  externalTransactionId String?       @map("external_transaction_id") @db.VarChar(255)
-  status                PaymentStatus @default(pending)
-  completedAt           DateTime?     @map("completed_at")
-  failedReason          String?       @map("failed_reason") @db.Text
-  metadata              Json?
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @updatedAt @map("updated_at")
-
-  user                  User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([referenceType, referenceId])
-  @@map("transactions")
-}
-
-model AnalyticsEvent {
-  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId        String?   @map("user_id") @db.Uuid
-  eventName     String    @map("event_name") @db.VarChar(100)
-  eventCategory String?   @map("event_category") @db.VarChar(50)
-  eventLabel    String?   @map("event_label") @db.VarChar(255)
-  eventValue    Decimal?  @map("event_value") @db.Decimal(10, 2)
-  pageUrl       String?   @map("page_url") @db.Text
-  referrer      String?   @db.Text
-  ipAddress     String?   @map("ip_address") @db.Inet
-  userAgent     String?   @map("user_agent") @db.Text
-  deviceType    String?   @map("device_type") @db.VarChar(50)
-  browser       String?   @db.VarChar(50)
-  os            String?   @db.VarChar(50)
-  metadata      Json?
-  createdAt     DateTime  @default(now()) @map("created_at")
-
-  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([eventName])
-  @@index([createdAt])
-  @@map("analytics_events")
-}
-
-model SavedItem {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId       String   @map("user_id") @db.Uuid
-  saveableType String   @map("saveable_type") @db.VarChar(50)
-  saveableId   String   @map("saveable_id") @db.VarChar(255)
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, saveableType, saveableId])
-  @@index([userId])
-  @@map("saved_items")
-}
-
-model AdminLog {
-  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  adminId      String    @map("admin_id") @db.Uuid
-  action       String    @db.VarChar(100)
-  resourceType String    @map("resource_type") @db.VarChar(50)
-  resourceId   String?   @map("resource_id") @db.VarChar(255)
-  oldValues    Json?     @map("old_values")
-  newValues    Json?     @map("new_values")
-  ipAddress    String?   @map("ip_address") @db.Inet
-  userAgent    String?   @map("user_agent") @db.Text
-  createdAt    DateTime  @default(now()) @map("created_at")
-
-  admin        User      @relation(fields: [adminId], references: [id], onDelete: Cascade)
-
-  @@index([adminId])
-  @@map("admin_logs")
-}
-
-model Subscription {
-  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId             String    @map("user_id") @db.Uuid
-  planName           String    @map("plan_name") @db.VarChar(50)
-  price              Decimal   @db.Decimal(10, 2)
-  startDate          DateTime  @map("start_date")
-  endDate            DateTime  @map("end_date")
-  status             String    @default("active") @db.VarChar(20)
-  cancelledAt        DateTime? @map("cancelled_at")
-  cancellationReason String?   @map("cancellation_reason") @db.Text
-  autoRenew          Boolean   @default(true) @map("auto_renew")
-  nextBillingDate    DateTime? @map("next_billing_date")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("subscriptions")
-}
-
-model SavedSearch {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  name        String   @db.VarChar(255)
-  type        String   @db.VarChar(50) // 'job', 'event', 'course', 'discount'
-  filters     Json     // Stores the filter criteria as JSON
-  isActive    Boolean  @default(true) @map("is_active")
-  lastUsedAt  DateTime? @map("last_used_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([type])
-  @@map("saved_searches")
-}
-
-// ============================================
-// Blog/Content System Models
-// ============================================
-
-model StudentProfile {
-  id                    String   @id @map("user_id") @db.Uuid
-  bio                   String?  @db.VarChar(160)
-  graduationYear        Int?     @map("graduation_year")
-  fieldOfStudy          String?  @map("field_of_study") @db.VarChar(255)
-  socialLinks           Json?    @map("social_links") // { telegram, github, linkedin }
-  totalArticles         Int      @default(0) @map("total_articles")
-  totalClapsReceived    Int      @default(0) @map("total_claps_received")
-  totalFollowers        Int      @default(0) @map("total_followers")
-  totalFollowing        Int      @default(0) @map("total_following")
-  reputationScore       Int      @default(0) @map("reputation_score")
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
-
-  user                  User     @relation(fields: [id], references: [id], onDelete: Cascade)
-
-  @@map("student_profiles")
-}
-
-model Article {
-  id                String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  authorId          String        @map("author_id") @db.Uuid
-  title             String        @db.VarChar(200)
-  subtitle          String?       @db.VarChar(300)
-  slug              String        @unique @db.VarChar(255)
-  content           Json          // Rich text structure
-  featuredImageUrl  String?       @map("featured_image_url") @db.VarChar(500)
-  readingTimeMinutes Int          @default(0) @map("reading_time_minutes")
-  wordCount         Int           @default(0) @map("word_count")
-  status            ArticleStatus @default(draft)
-  rejectionReason   String?       @map("rejection_reason") @db.Text
-  publishedAt       DateTime?     @map("published_at")
-  featured          Boolean       @default(false)
-  featuredAt        DateTime?     @map("featured_at")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-
-  author            User          @relation("ArticleAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  contentBlocks     ArticleContent[]
-  stats             ArticleStats?
-  claps             Clap[]
-  responses         Response[]
-  bookmarks         Bookmark[]
-  views             ArticleView[]
-  shares            Share[]
-  tags              ArticleTag[]
-
-  @@index([authorId])
-  @@index([status, publishedAt])
-  @@index([slug])
-  @@index([featured])
-  @@map("articles")
-}
-
-model ArticleContent {
-  id          String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  articleId   String           @map("article_id") @db.Uuid
-  blockType   ContentBlockType @map("block_type")
-  content     Json             // Block-specific content
-  position    Int              @default(0)
-  createdAt   DateTime         @default(now()) @map("created_at")
-
-  article     Article          @relation(fields: [articleId], references: [id], onDelete: Cascade)
-
-  @@index([articleId])
-  @@map("article_contents")
-}
-
-model ArticleStats {
-  articleId         String   @id @map("article_id") @db.Uuid
-  viewsCount        Int      @default(0) @map("views_count")
-  uniqueViewsCount  Int      @default(0) @map("unique_views_count")
-  clapsCount        Int      @default(0) @map("claps_count")
-  uniqueClappers    Int      @default(0) @map("unique_clappers")
-  responsesCount    Int      @default(0) @map("responses_count")
-  bookmarksCount    Int      @default(0) @map("bookmarks_count")
-  sharesCount       Int      @default(0) @map("shares_count")
-  readRatio         Decimal  @default(0) @map("read_ratio") @db.Decimal(3, 2)
-  avgReadTimeSeconds Int     @default(0) @map("avg_read_time_seconds")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-
-  article           Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-
-  @@map("article_stats")
-}
-
-model Clap {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  articleId   String   @map("article_id") @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  clapCount   Int      @default(1) @map("clap_count") // 1-50
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user        User     @relation("UserClaps", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([articleId, userId])
-  @@index([articleId])
-  @@index([userId])
-  @@map("claps")
-}
-
-model Response {
-  id                     String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  articleId              String         @map("article_id") @db.Uuid
-  authorId               String         @map("author_id") @db.Uuid
-  parentResponseId       String?        @map("parent_response_id") @db.Uuid
-  content                Json           // Rich text content
-  highlightedText        String?        @map("highlighted_text") @db.Text
-  highlightPositionStart Int?           @map("highlight_position_start")
-  highlightPositionEnd   Int?           @map("highlight_position_end")
-  isEdited               Boolean        @default(false) @map("is_edited")
-  clapsCount             Int            @default(0) @map("claps_count")
-  repliesCount           Int            @default(0) @map("replies_count")
-  isReported             Boolean        @default(false) @map("is_reported")
-  reportCount            Int            @default(0) @map("report_count")
-  createdAt              DateTime       @default(now()) @map("created_at")
-  updatedAt              DateTime       @updatedAt @map("updated_at")
-
-  article                Article        @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  author                 User           @relation("UserResponses", fields: [authorId], references: [id], onDelete: Cascade)
-  parentResponse         Response?      @relation("ResponseReplies", fields: [parentResponseId], references: [id], onDelete: Cascade)
-  replies                Response[]     @relation("ResponseReplies")
-  claps                  ResponseClap[]
-
-  @@index([articleId])
-  @@index([authorId])
-  @@index([parentResponseId])
-  @@map("responses")
-}
-
-model ResponseClap {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  responseId  String   @map("response_id") @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  clapCount   Int      @default(1) @map("clap_count") // 1-50
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  response    Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  user        User     @relation("UserResponseClaps", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([responseId, userId])
-  @@index([responseId])
-  @@index([userId])
-  @@map("response_claps")
-}
-
-model Bookmark {
-  id           String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId       String              @map("user_id") @db.Uuid
-  articleId    String              @map("article_id") @db.Uuid
-  collectionId String?             @map("collection_id") @db.Uuid
-  createdAt    DateTime            @default(now()) @map("created_at")
-
-  user         User                @relation("UserBookmarks", fields: [userId], references: [id], onDelete: Cascade)
-  article      Article             @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  collection   BookmarkCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
-
-  @@unique([userId, articleId])
-  @@index([userId])
-  @@index([articleId])
-  @@index([collectionId])
-  @@map("bookmarks")
-}
-
-model BookmarkCollection {
-  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId       String     @map("user_id") @db.Uuid
-  name         String     @db.VarChar(100)
-  description  String?    @db.Text
-  articleCount Int        @default(0) @map("article_count")
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
-
-  user         User       @relation("UserBookmarkCollections", fields: [userId], references: [id], onDelete: Cascade)
-  bookmarks    Bookmark[]
-
-  @@index([userId])
-  @@map("bookmark_collections")
-}
-
-model Follow {
-  followerId  String   @map("follower_id") @db.Uuid
-  followingId String   @map("following_id") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  follower    User     @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
-  following   User     @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
-
-  @@id([followerId, followingId])
-  @@index([followerId])
-  @@index([followingId])
-  @@map("follows")
-}
-
-model Tag {
-  id           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name         String      @unique @db.VarChar(100)
-  slug         String      @unique @db.VarChar(100)
-  category     TagCategory
-  articleCount Int         @default(0) @map("article_count")
-  createdAt    DateTime    @default(now()) @map("created_at")
-
-  articles     ArticleTag[]
-
-  @@index([slug])
-  @@index([category])
-  @@map("tags")
-}
-
-model ArticleTag {
-  articleId String  @map("article_id") @db.Uuid
-  tagId     String  @map("tag_id") @db.Uuid
-
-  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([articleId, tagId])
-  @@index([articleId])
-  @@index([tagId])
-  @@map("article_tags")
-}
-
-model BlogNotification {
-  id          String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId      String               @map("user_id") @db.Uuid
-  type        BlogNotificationType
-  actorId     String?              @map("actor_id") @db.Uuid
-  entityType  String               @map("entity_type") @db.VarChar(50) // article, response, user
-  entityId    String               @map("entity_id") @db.Uuid
-  message     String               @db.Text
-  isRead      Boolean              @default(false) @map("is_read")
-  createdAt   DateTime             @default(now()) @map("created_at")
-
-  user        User                 @relation("UserBlogNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  actor       User?                @relation("ActorBlogNotifications", fields: [actorId], references: [id], onDelete: SetNull)
-
-  @@index([userId, isRead])
-  @@index([actorId])
-  @@map("blog_notifications")
-}
-
-model ArticleView {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  articleId       String   @map("article_id") @db.Uuid
-  userId          String?  @map("user_id") @db.Uuid
-  sessionId       String   @map("session_id") @db.VarChar(255)
-  readPercentage  Int      @default(0) @map("read_percentage")
-  timeSpentSeconds Int     @default(0) @map("time_spent_seconds")
-  referrer        String?  @db.VarChar(500)
-  deviceType      String?  @map("device_type") @db.VarChar(20)
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  article         Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user            User?    @relation("UserArticleViews", fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([articleId])
-  @@index([userId])
-  @@index([sessionId])
-  @@map("article_views")
-}
-
-model Share {
-  id        String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  articleId String        @map("article_id") @db.Uuid
-  userId    String        @map("user_id") @db.Uuid
-  platform  SharePlatform
-  createdAt DateTime      @default(now()) @map("created_at")
-
-  article   Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  user      User          @relation("UserShares", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([articleId])
-  @@index([userId])
-  @@map("shares")
-}
-
-model Report {
-  id          String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  reporterId  String       @map("reporter_id") @db.Uuid
-  entityType  String       @map("entity_type") @db.VarChar(50) // article, response
-  entityId    String       @map("entity_id") @db.Uuid
-  reason      ReportReason
-  description String?      @db.Text
-  status      ReportStatus @default(pending)
-  reviewedBy  String?      @map("reviewed_by") @db.Uuid
-  actionTaken String?      @map("action_taken") @db.Text
-  createdAt   DateTime     @default(now()) @map("created_at")
-  reviewedAt  DateTime?    @map("reviewed_at")
-
-  reporter    User         @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  reviewer    User?        @relation("ReportReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
-
-  @@index([reporterId])
-  @@index([entityType, entityId])
-  @@index([status])
-  @@map("reports")
-}
-
-model Draft {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  authorId    String   @map("author_id") @db.Uuid
-  title       String?  @db.VarChar(200)
-  content     Json?
-  lastSavedAt DateTime @default(now()) @map("last_saved_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  author      User     @relation("UserDrafts", fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([authorId])
-  @@map("drafts")
-}
-
-// ============================================
-// Resume System Models
-// ============================================
-
-model Resume {
-  id                String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId            String        @map("user_id") @db.Uuid
-  title             String        @db.VarChar(100) // e.g., "IT Resume", "Marketing Resume"
-  summary           String?       @db.Text
-  phone             String?       @db.VarChar(20)
-  email             String?       @db.VarChar(255)
-  location          String?       @db.VarChar(255)
-  linkedinUrl       String?       @map("linkedin_url") @db.VarChar(500)
-  githubUrl         String?       @map("github_url") @db.VarChar(500)
-  portfolioUrl      String?       @map("portfolio_url") @db.VarChar(500)
-  pdfUrl            String?       @map("pdf_url") @db.VarChar(500)
-  privacy           ResumePrivacy @default(private)
-  isDefault         Boolean       @default(false) @map("is_default")
-  viewCount         Int           @default(0) @map("view_count")
-  downloadCount     Int           @default(0) @map("download_count")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-
-  user              User          @relation("UserResumes", fields: [userId], references: [id], onDelete: Cascade)
-  educations        ResumeEducation[]
-  experiences       ResumeExperience[]
-  skills            ResumeSkill[]
-  languages         ResumeLanguage[]
-  certifications    ResumeCertification[]
-  projects          ResumeProject[]
-  applications      JobApplication[] @relation("ApplicationResume")
-
-  @@index([userId])
-  @@map("resumes")
-}
-
-model ResumeEducation {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resumeId        String    @map("resume_id") @db.Uuid
-  institution     String    @db.VarChar(255)
-  degree          String    @db.VarChar(100)
-  fieldOfStudy    String    @map("field_of_study") @db.VarChar(255)
-  startDate       DateTime  @map("start_date") @db.Date
-  endDate         DateTime? @map("end_date") @db.Date
-  isCurrent       Boolean   @default(false) @map("is_current")
-  gpa             Decimal?  @db.Decimal(3, 2)
-  description     String?   @db.Text
-  sortOrder       Int       @default(0) @map("sort_order")
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  resume          Resume    @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-
-  @@index([resumeId])
-  @@map("resume_educations")
-}
-
-model ResumeExperience {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resumeId        String    @map("resume_id") @db.Uuid
-  company         String    @db.VarChar(255)
-  position        String    @db.VarChar(255)
-  location        String?   @db.VarChar(255)
-  startDate       DateTime  @map("start_date") @db.Date
-  endDate         DateTime? @map("end_date") @db.Date
-  isCurrent       Boolean   @default(false) @map("is_current")
-  description     String?   @db.Text
-  achievements    String[]
-  sortOrder       Int       @default(0) @map("sort_order")
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  resume          Resume    @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-
-  @@index([resumeId])
-  @@map("resume_experiences")
-}
-
-model ResumeSkill {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resumeId    String   @map("resume_id") @db.Uuid
-  name        String   @db.VarChar(100)
-  category    String?  @db.VarChar(50) // Technical, Soft Skills, Tools
-  level       Int?     // 1-5 proficiency level
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  resume      Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-
-  @@index([resumeId])
-  @@map("resume_skills")
-}
-
-model ResumeLanguage {
-  id          String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resumeId    String              @map("resume_id") @db.Uuid
-  language    String              @db.VarChar(50)
-  proficiency LanguageProficiency
-  sortOrder   Int                 @default(0) @map("sort_order")
-  createdAt   DateTime            @default(now()) @map("created_at")
-
-  resume      Resume              @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-
-  @@index([resumeId])
-  @@map("resume_languages")
-}
-
-model ResumeCertification {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resumeId        String    @map("resume_id") @db.Uuid
-  name            String    @db.VarChar(255)
-  organization    String    @db.VarChar(255)
-  issueDate       DateTime  @map("issue_date") @db.Date
-  expiryDate      DateTime? @map("expiry_date") @db.Date
-  credentialId    String?   @map("credential_id") @db.VarChar(255)
-  credentialUrl   String?   @map("credential_url") @db.VarChar(500)
-  sortOrder       Int       @default(0) @map("sort_order")
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  resume          Resume    @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-
-  @@index([resumeId])
-  @@map("resume_certifications")
-}
-
-model ResumeProject {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  resumeId        String   @map("resume_id") @db.Uuid
-  name            String   @db.VarChar(255)
-  description     String?  @db.Text
-  url             String?  @db.VarChar(500)
-  technologies    String[]
-  startDate       DateTime? @map("start_date") @db.Date
-  endDate         DateTime? @map("end_date") @db.Date
-  sortOrder       Int      @default(0) @map("sort_order")
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  resume          Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
-
-  @@index([resumeId])
-  @@map("resume_projects")
-}
-
-// ============================================
-// Enhanced Job System Models
-// ============================================
-
-model JobCategory {
-  id          Int       @id @default(autoincrement())
-  nameUz      String    @map("name_uz") @db.VarChar(100)
-  nameEn      String?   @map("name_en") @db.VarChar(100)
-  nameRu      String?   @map("name_ru") @db.VarChar(100)
-  slug        String    @unique @db.VarChar(100)
-  icon        String?   @db.VarChar(100)
-  description String?   @db.Text
-  isActive    Boolean   @default(true) @map("is_active")
-  sortOrder   Int       @default(0) @map("sort_order")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  jobs        Job[]     @relation("JobCategoryRelation")
-
-  @@map("job_categories")
-}
-
-model PartnerJobSubscription {
-  id                    String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId                String         @map("user_id") @db.Uuid
-  planType              JobPostingType @map("plan_type")
-  maxActiveJobs         Int            @map("max_active_jobs")
-  jobDurationDays       Int            @map("job_duration_days")
-  featuredPlacements    Int            @default(0) @map("featured_placements")
-  startDate             DateTime       @map("start_date")
-  endDate               DateTime       @map("end_date")
-  isActive              Boolean        @default(true) @map("is_active")
-  autoRenew             Boolean        @default(false) @map("auto_renew")
-  price                 Decimal        @db.Decimal(10, 2)
-  createdAt             DateTime       @default(now()) @map("created_at")
-  updatedAt             DateTime       @updatedAt @map("updated_at")
-
-  user                  User           @relation("UserJobSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("partner_job_subscriptions")
-}
-
-model ApplicationStatusHistory {
-  id              String                   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  applicationId   String                   @map("application_id") @db.Uuid
-  fromStatus      JobApplicationStatusEnum? @map("from_status")
-  toStatus        JobApplicationStatusEnum @map("to_status")
-  notes           String?                  @db.Text
-  changedBy       String?                  @map("changed_by") @db.Uuid
-  createdAt       DateTime                 @default(now()) @map("created_at")
-
-  application     JobApplication           @relation("ApplicationStatusHistory", fields: [applicationId], references: [id], onDelete: Cascade)
-  changedByUser   User?                    @relation("StatusChangedBy", fields: [changedBy], references: [id], onDelete: SetNull)
-
-  @@index([applicationId])
-  @@map("application_status_history")
-}
-
-model JobAnalytics {
-  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  jobId                 String   @map("job_id") @db.Uuid
-  date                  DateTime @db.Date
-  views                 Int      @default(0)
-  uniqueViews           Int      @default(0) @map("unique_views")
-  applications          Int      @default(0)
-  clicks                Int      @default(0)
-  saves                 Int      @default(0)
-  shares                Int      @default(0)
-  conversionRate        Decimal  @default(0) @map("conversion_rate") @db.Decimal(5, 2)
-
-  job                   Job      @relation("JobAnalyticsRelation", fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@unique([jobId, date])
-  @@index([jobId])
-  @@index([date])
-  @@map("job_analytics")
-}
-
-model JobApproval {
-  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  jobId           String    @map("job_id") @db.Uuid
-  status          JobStatus
-  reviewedBy      String?   @map("reviewed_by") @db.Uuid
-  reviewedAt      DateTime? @map("reviewed_at")
-  notes           String?   @db.Text
-  rejectionReason String?   @map("rejection_reason") @db.Text
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  job             Job       @relation("JobApprovalHistory", fields: [jobId], references: [id], onDelete: Cascade)
-  reviewer        User?     @relation("JobApprovalReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
-
-  @@index([jobId])
-  @@map("job_approvals")
-}
-
-// ============================================
-// Enhanced Event System Models
-// ============================================
-
-model EventTicketType {
-  id                String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  eventId           String       @map("event_id") @db.Uuid
-  name              String       @db.VarChar(100) // Early Bird, Regular, VIP
-  description       String?      @db.Text
-  price             Decimal      @db.Decimal(10, 2)
-  quantity          Int
-  soldCount         Int          @default(0) @map("sold_count")
-  maxPerPerson      Int          @default(5) @map("max_per_person")
-  saleStartDate     DateTime     @map("sale_start_date")
-  saleEndDate       DateTime     @map("sale_end_date")
-  isActive          Boolean      @default(true) @map("is_active")
-  sortOrder         Int          @default(0) @map("sort_order")
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
-
-  event             Event        @relation("EventTicketTypes", fields: [eventId], references: [id], onDelete: Cascade)
-  tickets           EventTicket[]
-
-  @@index([eventId])
-  @@map("event_ticket_types")
-}
-
-model EventTicket {
-  id              String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  ticketTypeId    String       @map("ticket_type_id") @db.Uuid
-  registrationId  String       @map("registration_id") @db.Uuid
-  ticketCode      String       @unique @map("ticket_code") @db.VarChar(20)
-  qrCode          String?      @map("qr_code") @db.Text
-  status          TicketStatus @default(sold)
-  usedAt          DateTime?    @map("used_at")
-  createdAt       DateTime     @default(now()) @map("created_at")
-
-  ticketType      EventTicketType    @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
-  registration    EventRegistration  @relation("RegistrationTickets", fields: [registrationId], references: [id], onDelete: Cascade)
-
-  @@index([ticketTypeId])
-  @@index([registrationId])
-  @@map("event_tickets")
-}
-
-model EventWaitlist {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  eventId     String   @map("event_id") @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  position    Int
-  notifiedAt  DateTime? @map("notified_at")
-  expiresAt   DateTime? @map("expires_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  event       Event    @relation("EventWaitlistRelation", fields: [eventId], references: [id], onDelete: Cascade)
-  user        User     @relation("UserEventWaitlist", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, userId])
-  @@index([eventId])
-  @@index([userId])
-  @@map("event_waitlist")
-}
-
-model EventCheckIn {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  registrationId  String   @map("registration_id") @db.Uuid
-  method          String   @db.VarChar(20) // qr_scan, manual, self_check_in
-  checkedInBy     String?  @map("checked_in_by") @db.Uuid
-  locationLat     Decimal? @map("location_lat") @db.Decimal(10, 7)
-  locationLng     Decimal? @map("location_lng") @db.Decimal(10, 7)
-  deviceInfo      String?  @map("device_info") @db.Text
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  registration    EventRegistration @relation("RegistrationCheckIns", fields: [registrationId], references: [id], onDelete: Cascade)
-  checkedInByUser User?    @relation("CheckedInBy", fields: [checkedInBy], references: [id], onDelete: SetNull)
-
-  @@index([registrationId])
-  @@map("event_check_ins")
-}
-
-model EventSeries {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name            String   @db.VarChar(255)
-  description     String?  @db.Text
-  organizerId     String   @map("organizer_id") @db.Uuid
-  isRecurring     Boolean  @default(false) @map("is_recurring")
-  recurrenceRule  String?  @map("recurrence_rule") @db.VarChar(100) // e.g., "WEEKLY", "MONTHLY"
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  organizer       User     @relation("EventSeriesOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
-  events          Event[]  @relation("SeriesEvents")
-
-  @@index([organizerId])
-  @@map("event_series")
-}
-
-model EventSpeaker {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  eventId     String   @map("event_id") @db.Uuid
-  name        String   @db.VarChar(255)
-  title       String?  @db.VarChar(255)
-  company     String?  @db.VarChar(255)
-  bio         String?  @db.Text
-  photoUrl    String?  @map("photo_url") @db.VarChar(500)
-  linkedinUrl String?  @map("linkedin_url") @db.VarChar(500)
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  event       Event    @relation("EventSpeakers", fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@index([eventId])
-  @@map("event_speakers")
-}
-
-model EventSponsor {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  eventId     String   @map("event_id") @db.Uuid
-  name        String   @db.VarChar(255)
-  tier        String?  @db.VarChar(50) // Gold, Silver, Bronze
-  logoUrl     String?  @map("logo_url") @db.VarChar(500)
-  website     String?  @db.VarChar(500)
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  event       Event    @relation("EventSponsors", fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@index([eventId])
-  @@map("event_sponsors")
-}
-
-model EventAgendaItem {
-  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  eventId     String    @map("event_id") @db.Uuid
-  title       String    @db.VarChar(255)
-  description String?   @db.Text
-  startTime   DateTime  @map("start_time")
-  endTime     DateTime  @map("end_time")
-  location    String?   @db.VarChar(255) // Room or specific location
-  speakerName String?   @map("speaker_name") @db.VarChar(255)
-  sortOrder   Int       @default(0) @map("sort_order")
-  createdAt   DateTime  @default(now()) @map("created_at")
-
-  event       Event     @relation("EventAgenda", fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@index([eventId])
-  @@map("event_agenda_items")
-}
-
-model EventAnalytics {
-  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  eventId               String   @map("event_id") @db.Uuid
-  date                  DateTime @db.Date
-  views                 Int      @default(0)
-  uniqueViews           Int      @default(0) @map("unique_views")
-  registrations         Int      @default(0)
-  cancellations         Int      @default(0)
-  ticketsSold           Int      @default(0) @map("tickets_sold")
-  revenue               Decimal  @default(0) @db.Decimal(12, 2)
-  checkIns              Int      @default(0) @map("check_ins")
-  conversionRate        Decimal  @default(0) @map("conversion_rate") @db.Decimal(5, 2)
-
-  event                 Event    @relation("EventAnalyticsRelation", fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, date])
-  @@index([eventId])
-  @@index([date])
-  @@map("event_analytics")
-}
-
-model EventFeedback {
-  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  eventId     String   @map("event_id") @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  rating      Int      // 1-5
-  comment     String?  @db.Text
-  wouldRecommend Boolean @default(true) @map("would_recommend")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  event       Event    @relation("EventFeedbackRelation", fields: [eventId], references: [id], onDelete: Cascade)
-  user        User     @relation("UserEventFeedback", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, userId])
-  @@index([eventId])
-  @@index([userId])
-  @@map("event_feedback")
-}
-
-model EventCertificate {
-  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  eventId         String   @map("event_id") @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  certificateCode String   @unique @map("certificate_code") @db.VarChar(50)
-  certificateUrl  String?  @map("certificate_url") @db.VarChar(500)
-  issuedAt        DateTime @default(now()) @map("issued_at")
-
-  event           Event    @relation("EventCertificates", fields: [eventId], references: [id], onDelete: Cascade)
-  user            User     @relation("UserEventCertificates", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, userId])
-  @@index([eventId])
-  @@index([userId])
-  @@map("event_certificates")
 }

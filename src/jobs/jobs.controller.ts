@@ -30,10 +30,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuditLog } from '../common/decorators/audit.decorator';
 import { AuditAction } from '../audit/audit.service';
-import { UserRole } from '@prisma/client';
-
-// Temporary type until Prisma migration
-type JobApplicationStatusEnum = 'applied' | 'under_review' | 'shortlisted' | 'interview_scheduled' | 'interviewed' | 'hired' | 'rejected' | 'withdrawn';
+import { UserRole, JobApplicationStatus } from '@prisma/client';
 
 @ApiTags('Jobs')
 @Controller('jobs')
@@ -136,13 +133,13 @@ export class JobsController {
   @ApiOperation({ summary: 'Get current user job applications' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'status', required: false, enum: ['applied', 'under_review', 'shortlisted', 'interview_scheduled', 'interviewed', 'hired', 'rejected', 'withdrawn'] })
+  @ApiQuery({ name: 'status', required: false, enum: ['pending', 'reviewed', 'interview', 'accepted', 'rejected'] })
   @ApiResponse({ status: 200, description: 'User applications' })
   getUserApplications(
     @CurrentUser() user: any,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-    @Query('status') status?: JobApplicationStatusEnum,
+    @Query('status') status?: JobApplicationStatus,
   ) {
     return this.jobsService.getUserApplications(
       user.id,
@@ -228,7 +225,7 @@ export class JobsController {
   @ApiResponse({ status: 200, description: 'Job applications' })
   getJobApplications(
     @Param('id') jobId: string,
-    @Query('status') status?: JobApplicationStatusEnum,
+    @Query('status') status?: JobApplicationStatus,
     @Query('universityId') universityId?: number,
     @Query('search') search?: string,
     @Query('page') page?: number,
@@ -311,7 +308,7 @@ export class JobsController {
   ) {
     return this.jobsService.updateApplicationStatus(
       applicationId,
-      updateStatusDto.status as JobApplicationStatusEnum,
+      updateStatusDto.status as JobApplicationStatus,
       user.id,
       {
         statusNotes: updateStatusDto.statusNotes,

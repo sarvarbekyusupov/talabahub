@@ -9,10 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import { CreateJobApplicationDto } from './dto/create-job-application.dto';
-// Temporary types until Prisma migration
-type JobStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'active' | 'paused' | 'closed' | 'expired';
-type JobApplicationStatusEnum = 'applied' | 'under_review' | 'shortlisted' | 'interview_scheduled' | 'interviewed' | 'hired' | 'rejected' | 'withdrawn';
-type JobPostingType = 'free' | 'premium';
+import { JobStatus, JobApplicationStatus, JobPostingType } from '@prisma/client';
 
 @Injectable()
 export class JobsService {
@@ -635,7 +632,7 @@ export class JobsService {
 
   async updateApplicationStatus(
     applicationId: string,
-    status: JobApplicationStatusEnum,
+    status: JobApplicationStatus,
     userId: string,
     options: {
       statusNotes?: string;
@@ -732,7 +729,7 @@ export class JobsService {
     await this.prisma.applicationStatusHistory.create({
       data: {
         applicationId,
-        fromStatus: previousStatus as JobApplicationStatusEnum,
+        fromStatus: previousStatus as JobApplicationStatus,
         toStatus: status,
         notes: options.statusNotes,
         changedBy: userId,
@@ -784,7 +781,7 @@ export class JobsService {
     return history;
   }
 
-  async getUserApplications(userId: string, page = 1, limit = 20, status?: JobApplicationStatusEnum) {
+  async getUserApplications(userId: string, page = 1, limit = 20, status?: JobApplicationStatus) {
     const skip = (page - 1) * limit;
 
     const where: any = { userId };
@@ -837,7 +834,7 @@ export class JobsService {
   async getJobApplications(
     jobId: string,
     filters: {
-      status?: JobApplicationStatusEnum;
+      status?: JobApplicationStatus;
       universityId?: number;
       minCourseYear?: number;
       search?: string;

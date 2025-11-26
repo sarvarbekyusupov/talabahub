@@ -7,7 +7,7 @@ CREATE TABLE "audit_logs" (
     "action" "audit_action" NOT NULL,
     "entity_type" TEXT NOT NULL,
     "entity_id" TEXT,
-    "user_id" TEXT,
+    "user_id" UUID,
     "user_email" TEXT,
     "user_role" TEXT,
     "ip_address" TEXT,
