@@ -35,7 +35,7 @@ export class JobsService {
     // Check partner subscription for premium features
     let postingType: JobPostingType = 'free';
     let expiresAt: Date | null = null;
-    let status: JobStatus = 'pending_approval';
+    const status: JobStatus = 'pending_approval';
 
     if (userId) {
       const subscription = await this.prisma.partnerJobSubscription.findFirst({

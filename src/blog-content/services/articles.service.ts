@@ -339,7 +339,7 @@ export class ArticlesService {
       throw new ForbiddenException('You can only update your own articles');
     }
 
-    let updateData: any = {
+    const updateData: any = {
       title: dto.title,
       subtitle: dto.subtitle,
       content: dto.content,

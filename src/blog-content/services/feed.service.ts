@@ -56,7 +56,7 @@ export class FeedService {
   async getTrending(filters: TrendingFilterDto) {
     const { timeframe = 'week', page = 1, limit = 20 } = filters;
 
-    let dateFilter = new Date();
+    const dateFilter = new Date();
     if (timeframe === 'today') {
       dateFilter.setDate(dateFilter.getDate() - 1);
     } else if (timeframe === 'week') {
