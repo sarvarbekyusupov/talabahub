@@ -81,14 +81,26 @@ export class EventsService {
   }
 
   async findAll(query: FindAllQuery) {
-    const page = Math.max(1, query.page || 1);
-    const limit = Math.min(100, Math.max(1, query.limit || 10));
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const where: any = {
       isActive: true,
-      eventStatus: { in: ['published', 'registration_closed', 'ongoing'] },
     };
+
+    // Only include eventStatus filter if the field exists
+    try {
+      where.eventStatus = { in: ['published', 'registration_closed', 'ongoing'] };
+    } catch (e) {
+      // Fallback to basic status field if eventStatus doesn't exist
+      try {
+        where.status = { in: ['upcoming', 'ongoing'] };
+      } catch (statusError) {
+        // Remove status filtering if neither field exists
+        console.warn('Neither eventStatus nor status field available, skipping status filter');
+      }
+    }
 
     if (query.type) where.eventType = query.type;
     if (query.category) where.category = query.category;

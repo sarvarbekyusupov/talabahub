@@ -58,7 +58,10 @@ export class BrandsService {
     isActive?: boolean,
     isFeatured?: boolean,
   ) {
-    const skip = (page - 1) * limit;
+    // Ensure parameters are proper numbers
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
+    const skip = (pageNum - 1) * limitNum;
 
     const where: any = {};
     if (categoryId !== undefined) where.categoryId = categoryId;
@@ -78,7 +81,7 @@ export class BrandsService {
       this.prisma.brand.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         include: {
           category: {
             select: {
@@ -110,9 +113,9 @@ export class BrandsService {
       })),
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
       },
     };
   }
