@@ -8,23 +8,14 @@ import {
   Delete,
   UseGuards,
   Query,
-  Ip,
-  Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { DiscountsService } from './discounts.service';
 import { CreateDiscountDto } from './dto/create-discount.dto';
 import { UpdateDiscountDto } from './dto/update-discount.dto';
-import {
-  ClaimDiscountDto,
-  RedeemClaimDto,
-  ApproveDiscountDto,
-  RejectDiscountDto,
-  FraudAlertActionDto,
-} from './dto/claim-discount.dto';
+import { ApproveDiscountDto, RejectDiscountDto } from './dto/claim-discount.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { VerifiedUserGuard } from '../verification/guards/verified-user.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -178,150 +169,6 @@ export class DiscountsController {
   }
 
   // ================================
-  // CLAIM ENDPOINTS
-  // ================================
-
-  @Post(':id/claim')
-  @UseGuards(JwtAuthGuard, VerifiedUserGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Claim a discount (Verified students only)' })
-  @ApiResponse({ status: 201, description: 'Discount claimed successfully' })
-  @ApiResponse({ status: 400, description: 'Cannot claim discount' })
-  @ApiResponse({ status: 403, description: 'Student verification required' })
-  @ApiResponse({ status: 404, description: 'Discount not found' })
-  async claimDiscount(
-    @Param('id') discountId: string,
-    @CurrentUser() user: any,
-    @Body() claimData: ClaimDiscountDto,
-    @Ip() ipAddress: string,
-    @Headers('user-agent') userAgent: string,
-  ) {
-    return this.discountsService.claimDiscount(
-      discountId,
-      user.id,
-      claimData,
-      ipAddress,
-      userAgent,
-    );
-  }
-
-  @Post('claims/:code/redeem')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.partner, UserRole.admin)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Redeem a claimed discount (Partner/Admin only)' })
-  @ApiResponse({ status: 200, description: 'Claim redeemed successfully' })
-  @ApiResponse({ status: 400, description: 'Cannot redeem claim' })
-  @ApiResponse({ status: 404, description: 'Claim not found' })
-  async redeemClaim(
-    @Param('code') claimCode: string,
-    @CurrentUser() user: any,
-    @Body() redeemData: RedeemClaimDto,
-  ) {
-    return this.discountsService.redeemClaim(claimCode, user.id, redeemData);
-  }
-
-  @Get('my-claims')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user claims' })
-  @ApiQuery({ name: 'status', required: false, type: String })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'List of user claims' })
-  async getUserClaims(
-    @CurrentUser() user: any,
-    @Query('status') status?: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.discountsService.getUserClaims(user.id, status, page, limit);
-  }
-
-  @Post('claims/:id/cancel')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cancel a claim' })
-  @ApiResponse({ status: 200, description: 'Claim cancelled successfully' })
-  @ApiResponse({ status: 400, description: 'Cannot cancel claim' })
-  @ApiResponse({ status: 404, description: 'Claim not found' })
-  async cancelClaim(
-    @Param('id') claimId: string,
-    @CurrentUser() user: any,
-  ) {
-    return this.discountsService.cancelClaim(claimId, user.id);
-  }
-
-  @Get(':id/eligibility')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Check user eligibility for a discount' })
-  @ApiQuery({ name: 'lat', required: false, type: Number })
-  @ApiQuery({ name: 'lng', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Eligibility status' })
-  async checkEligibility(
-    @Param('id') discountId: string,
-    @CurrentUser() user: any,
-    @Query('lat') lat?: number,
-    @Query('lng') lng?: number,
-  ) {
-    return this.discountsService.checkUserEligibility(discountId, user.id, lat, lng);
-  }
-
-  // ================================
-  // ADMIN APPROVAL ENDPOINTS
-  // ================================
-
-  @Get('admin/pending-approvals')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.admin)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get pending discount approvals (Admin only)' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'List of pending discounts' })
-  async getPendingApprovals(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.discountsService.getPendingApprovals(page, limit);
-  }
-
-  @Post(':id/approve')
-  @AuditLog(AuditAction.UPDATE, 'Discount')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.admin)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Approve a discount (Admin only)' })
-  @ApiResponse({ status: 200, description: 'Discount approved' })
-  @ApiResponse({ status: 400, description: 'Cannot approve discount' })
-  @ApiResponse({ status: 404, description: 'Discount not found' })
-  async approveDiscount(
-    @Param('id') discountId: string,
-    @CurrentUser() user: any,
-    @Body() approveData: ApproveDiscountDto,
-  ) {
-    return this.discountsService.approveDiscount(discountId, user.id, approveData.notes);
-  }
-
-  @Post(':id/reject')
-  @AuditLog(AuditAction.UPDATE, 'Discount')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.admin)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Reject a discount (Admin only)' })
-  @ApiResponse({ status: 200, description: 'Discount rejected' })
-  @ApiResponse({ status: 400, description: 'Cannot reject discount' })
-  @ApiResponse({ status: 404, description: 'Discount not found' })
-  async rejectDiscount(
-    @Param('id') discountId: string,
-    @CurrentUser() user: any,
-    @Body() rejectData: RejectDiscountDto,
-  ) {
-    return this.discountsService.rejectDiscount(discountId, user.id, rejectData.reason);
-  }
-
-  // ================================
   // PARTNER ENDPOINTS
   // ================================
 
@@ -340,40 +187,6 @@ export class DiscountsController {
     @Query('limit') limit?: number,
   ) {
     return this.discountsService.getPartnerDiscounts(brandId, page, limit);
-  }
-
-  @Get('partner/pending-verifications')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.partner)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get pending claim verifications (Partner only)' })
-  @ApiQuery({ name: 'brandId', required: true, type: Number })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'List of pending verifications' })
-  async getPartnerPendingVerifications(
-    @Query('brandId') brandId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.discountsService.getPartnerPendingVerifications(brandId, page, limit);
-  }
-
-  @Get('partner/analytics')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.partner)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get partner analytics (Partner only)' })
-  @ApiQuery({ name: 'brandId', required: true, type: Number })
-  @ApiQuery({ name: 'startDate', required: false, type: String })
-  @ApiQuery({ name: 'endDate', required: false, type: String })
-  @ApiResponse({ status: 200, description: 'Partner analytics' })
-  async getPartnerAnalytics(
-    @Query('brandId') brandId: number,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
-    return this.discountsService.getPartnerAnalytics(brandId, startDate, endDate);
   }
 
   @Post(':id/pause')
@@ -421,83 +234,18 @@ export class DiscountsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get recommended discounts for user' })
-  @ApiQuery({ name: 'lat', required: false, type: Number })
-  @ApiQuery({ name: 'lng', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'List of recommended discounts' })
   async getRecommendedDiscounts(
     @CurrentUser() user: any,
-    @Query('lat') lat?: number,
-    @Query('lng') lng?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.discountsService.getRecommendedDiscounts(user.id, lat, lng, limit);
-  }
-
-  // ================================
-  // FRAUD ALERT ENDPOINTS (Admin)
-  // ================================
-
-  @Get('admin/analytics')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.admin)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get platform-wide analytics (Admin only)' })
-  @ApiQuery({ name: 'startDate', required: false, type: String })
-  @ApiQuery({ name: 'endDate', required: false, type: String })
-  @ApiResponse({ status: 200, description: 'Platform analytics' })
-  async getPlatformAnalytics(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-  ) {
-    return this.discountsService.getPlatformAnalytics(startDate, endDate);
-  }
-
-  @Get('admin/fraud-alerts')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.admin)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get fraud alerts (Admin only)' })
-  @ApiQuery({ name: 'status', required: false, type: String })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'List of fraud alerts' })
-  async getFraudAlerts(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-    @Query('status') status?: string,
-  ) {
-    return this.discountsService.getFraudAlerts(page, limit, status);
-  }
-
-  @Patch('admin/fraud-alerts/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.admin)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update fraud alert status (Admin only)' })
-  @ApiResponse({ status: 200, description: 'Fraud alert updated' })
-  @ApiResponse({ status: 404, description: 'Fraud alert not found' })
-  async updateFraudAlert(
-    @Param('id') alertId: string,
-    @CurrentUser() user: any,
-    @Body() updateData: FraudAlertActionDto,
-  ) {
-    return this.discountsService.updateFraudAlert(alertId, user.id, updateData);
+    return this.discountsService.getRecommendedDiscounts(user.id, limit);
   }
 
   // ================================
   // MAINTENANCE ENDPOINTS (Admin)
   // ================================
-
-  @Post('admin/expire-claims')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.admin)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Expire old claims (Admin only)' })
-  @ApiResponse({ status: 200, description: 'Claims expired' })
-  async expireOldClaims() {
-    return this.discountsService.expireOldClaims();
-  }
 
   @Post('admin/deactivate-expired')
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -39,6 +39,26 @@ import { UserRole, JobApplicationStatus } from '@prisma/client';
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
+  /*
+   * NOTE: This controller has been modified to work with a simplified jobs service.
+   * The following features have been disabled because their corresponding methods don't exist in the simplified service:
+   *
+   * DISABLED FEATURES:
+   * - getJobCategories() - Job categories management
+   * - getRecommendedJobs() - Personalized job recommendations
+   * - getPendingApprovals() - Admin job approval workflow
+   * - getPartnerJobsAnalytics() - Company/partner analytics
+   * - getJobStatistics() - Individual job statistics
+   * - approveJob() / rejectJob() - Job approval/rejection workflow
+   * - getApplicationStatusHistory() - Application status change history
+   *
+   * DISABLED PARAMETERS:
+   * - categoryId - Not supported in simplified service database schema
+   * - experienceLevel - Not supported in simplified service
+   *
+   * The remaining features provide core job posting and application management functionality.
+   */
+
   // ==========================================
   // Job CRUD Operations
   // ==========================================
@@ -59,7 +79,7 @@ export class JobsController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'companyId', required: false, type: Number })
-  @ApiQuery({ name: 'categoryId', required: false, type: Number })
+  // NOTE: categoryId parameter removed - not supported by simplified service
   @ApiQuery({ name: 'jobType', required: false, enum: ['internship', 'part_time', 'full_time', 'freelance'] })
   @ApiQuery({ name: 'location', required: false, type: String })
   @ApiQuery({ name: 'isRemote', required: false, type: Boolean })
@@ -68,13 +88,12 @@ export class JobsController {
   @ApiQuery({ name: 'minSalary', required: false, type: Number })
   @ApiQuery({ name: 'maxSalary', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
-  @ApiQuery({ name: 'experienceLevel', required: false, type: String })
+  // NOTE: experienceLevel parameter removed - not supported by simplified service
   @ApiResponse({ status: 200, description: 'List of jobs with pagination' })
   findAll(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('companyId') companyId?: number,
-    @Query('categoryId') categoryId?: number,
     @Query('jobType') jobType?: string,
     @Query('location') location?: string,
     @Query('isRemote') isRemote?: boolean,
@@ -83,14 +102,13 @@ export class JobsController {
     @Query('minSalary') minSalary?: number,
     @Query('maxSalary') maxSalary?: number,
     @Query('search') search?: string,
-    @Query('experienceLevel') experienceLevel?: string,
   ) {
     return this.jobsService.findAll(
       page ? Number(page) : 1,
       limit ? Number(limit) : 20,
       {
         companyId: companyId ? Number(companyId) : undefined,
-        categoryId: categoryId ? Number(categoryId) : undefined,
+        // categoryId removed - not supported by simplified service
         jobType,
         location,
         isRemote,
@@ -99,35 +117,37 @@ export class JobsController {
         minSalary: minSalary ? Number(minSalary) : undefined,
         maxSalary: maxSalary ? Number(maxSalary) : undefined,
         search,
-        experienceLevel,
+        // experienceLevel removed - not supported by simplified service
       },
     );
   }
 
-  @Get('categories')
-  @Public()
-  @ApiOperation({ summary: 'Get all job categories' })
-  @ApiResponse({ status: 200, description: 'List of job categories' })
-  getCategories() {
-    return this.jobsService.getJobCategories();
-  }
+  // @Get('categories')
+  // @Public()
+  // @ApiOperation({ summary: 'Get all job categories' })
+  // @ApiResponse({ status: 200, description: 'List of job categories' })
+  // getCategories() {
+  //   // NOTE: Feature disabled - getJobCategories() method doesn't exist in simplified service
+  //   return this.jobsService.getJobCategories();
+  // }
 
-  @Get('recommendations')
-  @ApiOperation({ summary: 'Get recommended jobs for current user' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Recommended jobs' })
-  getRecommendations(
-    @CurrentUser() user: any,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.jobsService.getRecommendedJobs(
-      user.id,
-      page ? Number(page) : 1,
-      limit ? Number(limit) : 10,
-    );
-  }
+  // @Get('recommendations')
+  // @ApiOperation({ summary: 'Get recommended jobs for current user' })
+  // @ApiQuery({ name: 'page', required: false, type: Number })
+  // @ApiQuery({ name: 'limit', required: false, type: Number })
+  // @ApiResponse({ status: 200, description: 'Recommended jobs' })
+  // getRecommendations(
+  //   @CurrentUser() user: any,
+  //   @Query('page') page?: number,
+  //   @Query('limit') limit?: number,
+  // ) {
+  //   // NOTE: Feature disabled - getRecommendedJobs() method doesn't exist in simplified service
+  //   return this.jobsService.getRecommendedJobs(
+  //     user.id,
+  //     page ? Number(page) : 1,
+  //     limit ? Number(limit) : 10,
+  //   );
+  // }
 
   @Get('me/applications')
   @ApiOperation({ summary: 'Get current user job applications' })
@@ -149,30 +169,32 @@ export class JobsController {
     );
   }
 
-  @Get('pending-approvals')
-  @Roles(UserRole.admin)
-  @ApiOperation({ summary: 'Get jobs pending approval (Admin only)' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Jobs pending approval' })
-  getPendingApprovals(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    return this.jobsService.getPendingApprovals(
-      page ? Number(page) : 1,
-      limit ? Number(limit) : 20,
-    );
-  }
+  // @Get('pending-approvals')
+  // @Roles(UserRole.admin)
+  // @ApiOperation({ summary: 'Get jobs pending approval (Admin only)' })
+  // @ApiQuery({ name: 'page', required: false, type: Number })
+  // @ApiQuery({ name: 'limit', required: false, type: Number })
+  // @ApiResponse({ status: 200, description: 'Jobs pending approval' })
+  // getPendingApprovals(
+  //   @Query('page') page?: number,
+  //   @Query('limit') limit?: number,
+  // ) {
+  //   // NOTE: Feature disabled - getPendingApprovals() method doesn't exist in simplified service
+  //   return this.jobsService.getPendingApprovals(
+  //     page ? Number(page) : 1,
+  //     limit ? Number(limit) : 20,
+  //   );
+  // }
 
-  @Get('company/:companyId/analytics')
-  @Roles(UserRole.admin, UserRole.partner)
-  @ApiOperation({ summary: 'Get analytics for all jobs of a company' })
-  @ApiParam({ name: 'companyId', type: Number })
-  @ApiResponse({ status: 200, description: 'Company jobs analytics' })
-  getCompanyAnalytics(@Param('companyId') companyId: string) {
-    return this.jobsService.getPartnerJobsAnalytics(Number(companyId));
-  }
+  // @Get('company/:companyId/analytics')
+  // @Roles(UserRole.admin, UserRole.partner)
+  // @ApiOperation({ summary: 'Get analytics for all jobs of a company' })
+  // @ApiParam({ name: 'companyId', type: Number })
+  // @ApiResponse({ status: 200, description: 'Company jobs analytics' })
+  // getCompanyAnalytics(@Param('companyId') companyId: string) {
+  //   // NOTE: Feature disabled - getPartnerJobsAnalytics() method doesn't exist in simplified service
+  //   return this.jobsService.getPartnerJobsAnalytics(Number(companyId));
+  // }
 
   @Get(':id')
   @Public()
@@ -191,13 +213,14 @@ export class JobsController {
     return this.jobsService.incrementViewCount(id);
   }
 
-  @Get(':id/stats')
-  @Roles(UserRole.admin, UserRole.partner)
-  @ApiOperation({ summary: 'Get job statistics (Admin/Partner only)' })
-  @ApiResponse({ status: 200, description: 'Job statistics' })
-  getJobStatistics(@Param('id') id: string) {
-    return this.jobsService.getJobStatistics(id);
-  }
+  // @Get(':id/stats')
+  // @Roles(UserRole.admin, UserRole.partner)
+  // @ApiOperation({ summary: 'Get job statistics (Admin/Partner only)' })
+  // @ApiResponse({ status: 200, description: 'Job statistics' })
+  // getJobStatistics(@Param('id') id: string) {
+  //   // NOTE: Feature disabled - getJobStatistics() method doesn't exist in simplified service
+  //   return this.jobsService.getJobStatistics(id);
+  // }
 
   @Post(':id/apply')
   @UseGuards(VerifiedUserGuard)
@@ -269,29 +292,31 @@ export class JobsController {
   // Job Approval Workflow
   // ==========================================
 
-  @Post(':id/approve')
-  @Roles(UserRole.admin)
-  @ApiOperation({ summary: 'Approve a job posting (Admin only)' })
-  @ApiResponse({ status: 200, description: 'Job approved' })
-  approveJob(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-    @Body('notes') notes?: string,
-  ) {
-    return this.jobsService.approveJob(id, user.id, notes);
-  }
+  // @Post(':id/approve')
+  // @Roles(UserRole.admin)
+  // @ApiOperation({ summary: 'Approve a job posting (Admin only)' })
+  // @ApiResponse({ status: 200, description: 'Job approved' })
+  // approveJob(
+  //   @Param('id') id: string,
+  //   @CurrentUser() user: any,
+  //   @Body('notes') notes?: string,
+  // ) {
+  //   // NOTE: Feature disabled - approveJob() method doesn't exist in simplified service
+  //   return this.jobsService.approveJob(id, user.id, notes);
+  // }
 
-  @Post(':id/reject')
-  @Roles(UserRole.admin)
-  @ApiOperation({ summary: 'Reject a job posting (Admin only)' })
-  @ApiResponse({ status: 200, description: 'Job rejected' })
-  rejectJob(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-    @Body('reason') reason: string,
-  ) {
-    return this.jobsService.rejectJob(id, user.id, reason);
-  }
+  // @Post(':id/reject')
+  // @Roles(UserRole.admin)
+  // @ApiOperation({ summary: 'Reject a job posting (Admin only)' })
+  // @ApiResponse({ status: 200, description: 'Job rejected' })
+  // rejectJob(
+  //   @Param('id') id: string,
+  //   @CurrentUser() user: any,
+  //   @Body('reason') reason: string,
+  // ) {
+  //   // NOTE: Feature disabled - rejectJob() method doesn't exist in simplified service
+  //   return this.jobsService.rejectJob(id, user.id, reason);
+  // }
 
   // ==========================================
   // Application Management
@@ -330,10 +355,11 @@ export class JobsController {
     return this.jobsService.withdrawApplication(applicationId, user.id, reason);
   }
 
-  @Get('applications/:applicationId/history')
-  @ApiOperation({ summary: 'Get application status history' })
-  @ApiResponse({ status: 200, description: 'Status history' })
-  getApplicationHistory(@Param('applicationId') applicationId: string) {
-    return this.jobsService.getApplicationStatusHistory(applicationId);
-  }
+  // @Get('applications/:applicationId/history')
+  // @ApiOperation({ summary: 'Get application status history' })
+  // @ApiResponse({ status: 200, description: 'Status history' })
+  // getApplicationHistory(@Param('applicationId') applicationId: string) {
+  //   // NOTE: Feature disabled - getApplicationStatusHistory() method doesn't exist in simplified service
+  //   return this.jobsService.getApplicationStatusHistory(applicationId);
+  // }
 }

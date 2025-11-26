@@ -7,21 +7,23 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
-import { UserRole, EventStatus, EventCategory, EventOrganizerType, EventAccessType, RegistrationStatus } from '@prisma/client';
-import * as crypto from 'crypto';
+import { UserRole } from '@prisma/client';
+
+// Define simple status types since enums don't exist in database
+type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+type RegistrationStatus = 'registered' | 'attended' | 'cancelled';
 
 interface FindAllQuery {
   page?: number;
   limit?: number;
-  type?: string;
-  category?: string;
+  eventType?: string;
   startDate?: string;
   endDate?: string;
   isOnline?: boolean;
   organizerId?: string;
   search?: string;
   isFree?: boolean;
-  isFeatured?: boolean;
+  status?: string;
 }
 
 @Injectable()
@@ -67,7 +69,7 @@ export class EventsService {
         startDate: start,
         endDate: end,
         registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
-        eventStatus: 'draft',
+        status: 'upcoming',
         ...rest,
       },
       include: this._getEventInclude(),
@@ -85,25 +87,18 @@ export class EventsService {
       isActive: true,
     };
 
-    // Only include eventStatus filter if the field exists
-    try {
-      where.eventStatus = { in: ['published', 'registration_closed', 'ongoing'] };
-    } catch (e) {
-      // Fallback to basic status field if eventStatus doesn't exist
-      try {
-        where.status = { in: ['upcoming', 'ongoing'] };
-      } catch (statusError) {
-        // Remove status filtering if neither field exists
-        console.warn('Neither eventStatus nor status field available, skipping status filter');
-      }
+    // Use the actual status field from database
+    if (query.status) {
+      where.status = query.status;
+    } else {
+      // Default filter for upcoming and ongoing events
+      where.status = { in: ['upcoming', 'ongoing'] };
     }
 
-    if (query.type) where.eventType = query.type;
-    if (query.category) where.category = query.category;
+    if (query.eventType) where.eventType = query.eventType;
     if (query.isOnline !== undefined) where.isOnline = query.isOnline;
     if (query.organizerId) where.organizerId = query.organizerId;
     if (query.isFree !== undefined) where.isFree = query.isFree;
-    if (query.isFeatured !== undefined) where.isFeatured = query.isFeatured;
 
     if (query.search) {
       where.OR = [
@@ -123,7 +118,6 @@ export class EventsService {
         where,
         include: this._getEventInclude(),
         orderBy: [
-          { isFeatured: 'desc' },
           { startDate: 'asc' },
         ],
         skip,
@@ -205,30 +199,10 @@ export class EventsService {
   }
 
   // ==========================================
-  // Event Status Workflow
+  // Event Status Management
   // ==========================================
 
-  async publishEvent(eventId: string, userId: string) {
-    const event = await this.findOne(eventId);
-
-    if (event.organizerId !== userId) {
-      throw new ForbiddenException('You can only publish your own events');
-    }
-
-    if (!['draft', 'pending_review'].includes(event.eventStatus)) {
-      throw new BadRequestException('Event cannot be published from current status');
-    }
-
-    const updated = await this.prisma.event.update({
-      where: { id: eventId },
-      data: { eventStatus: 'published' },
-      include: this._getEventInclude(),
-    });
-
-    return this._formatEventResponse(updated);
-  }
-
-  async cancelEvent(eventId: string, userId: string, reason: string) {
+  async cancelEvent(eventId: string, userId: string) {
     const event = await this.findOne(eventId);
 
     if (event.organizerId !== userId) {
@@ -238,29 +212,23 @@ export class EventsService {
     // Update event status
     await this.prisma.event.update({
       where: { id: eventId },
-      data: {
-        eventStatus: 'cancelled',
-        cancelledAt: new Date(),
-        cancellationReason: reason,
-      },
+      data: { status: 'cancelled' },
     });
 
-    // Notify all registered users
-    const registrations = await this.prisma.eventRegistration.findMany({
-      where: { eventId, registrationStatus: { in: ['registered', 'confirmed'] } },
-      include: { user: { select: { email: true, firstName: true } } },
+    // Mark all registrations as cancelled
+    await this.prisma.eventRegistration.updateMany({
+      where: { eventId },
+      data: { status: 'cancelled' },
     });
 
-    // TODO: Send cancellation notifications to all registrants
-
-    return { message: 'Event cancelled successfully', affectedRegistrations: registrations.length };
+    return { message: 'Event cancelled successfully' };
   }
 
   // ==========================================
   // Registration Management
   // ==========================================
 
-  async registerUser(eventId: string, userId: string, ticketTypeId?: string, answers?: any) {
+  async registerUser(eventId: string, userId: string) {
     const event = await this.findOne(eventId);
 
     // Check if already registered
@@ -278,29 +246,16 @@ export class EventsService {
     }
 
     // Check capacity
-    const isAtCapacity = event.maxParticipants && event.currentParticipants >= event.maxParticipants;
-
-    if (isAtCapacity && !event.waitlistEnabled) {
+    if (event.maxParticipants && event.currentParticipants >= event.maxParticipants) {
       throw new BadRequestException('Event is at full capacity');
     }
-
-    // Generate confirmation code
-    const confirmationCode = this._generateConfirmationCode();
-    const qrCode = this._generateQRCode(confirmationCode);
-
-    // Determine status
-    const registrationStatus: RegistrationStatus = isAtCapacity ? 'waitlisted' : 'registered';
 
     // Create registration
     const registration = await this.prisma.eventRegistration.create({
       data: {
         eventId,
         userId,
-        registrationStatus,
-        confirmationCode,
-        qrCode,
-        answers,
-        status: registrationStatus,
+        status: 'registered',
       },
       include: {
         event: { select: { id: true, title: true, startDate: true } },
@@ -308,26 +263,11 @@ export class EventsService {
       },
     });
 
-    // Update counts
-    if (registrationStatus === 'registered') {
-      await this.prisma.event.update({
-        where: { id: eventId },
-        data: { currentParticipants: { increment: 1 } },
-      });
-    } else {
-      await this.prisma.event.update({
-        where: { id: eventId },
-        data: { waitlistCount: { increment: 1 } },
-      });
-
-      // Add to waitlist
-      const position = await this.prisma.eventWaitlist.count({ where: { eventId } }) + 1;
-      await this.prisma.eventWaitlist.create({
-        data: { eventId, userId, position },
-      });
-    }
-
-    // TODO: Send confirmation email
+    // Update participant count
+    await this.prisma.event.update({
+      where: { id: eventId },
+      data: { currentParticipants: { increment: 1 } },
+    });
 
     return registration;
   }
@@ -341,34 +281,17 @@ export class EventsService {
       throw new NotFoundException('User is not registered for this event');
     }
 
-    const wasRegistered = registration.registrationStatus === 'registered';
-
     // Update registration status
     await this.prisma.eventRegistration.update({
       where: { eventId_userId: { eventId, userId } },
-      data: {
-        registrationStatus: 'cancelled',
-        cancelledAt: new Date(),
-      },
+      data: { status: 'cancelled' },
     });
 
-    // Update event counts
-    if (wasRegistered) {
+    // Update event count if they were registered
+    if (registration.status === 'registered') {
       await this.prisma.event.update({
         where: { id: eventId },
         data: { currentParticipants: { decrement: 1 } },
-      });
-
-      // Promote from waitlist
-      await this._promoteFromWaitlist(eventId);
-    } else {
-      // Remove from waitlist
-      await this.prisma.eventWaitlist.delete({
-        where: { eventId_userId: { eventId, userId } },
-      });
-      await this.prisma.event.update({
-        where: { id: eventId },
-        data: { waitlistCount: { decrement: 1 } },
       });
     }
 
@@ -393,7 +316,6 @@ export class EventsService {
               location: true,
               isOnline: true,
               organizer: { select: { id: true, firstName: true, lastName: true } },
-              _count: { select: { registrations: true } },
             },
           },
         },
@@ -419,7 +341,7 @@ export class EventsService {
 
     const skip = (page - 1) * limit;
     const where: any = { eventId };
-    if (status) where.registrationStatus = status;
+    if (status) where.status = status;
 
     const [attendees, total] = await Promise.all([
       this.prisma.eventRegistration.findMany({
@@ -453,29 +375,6 @@ export class EventsService {
   // Check-In System
   // ==========================================
 
-  async checkInByQR(qrCode: string, organizerId: string) {
-    // Find registration by confirmation code (encoded in QR)
-    const confirmationCode = this._decodeQRCode(qrCode);
-
-    const registration = await this.prisma.eventRegistration.findUnique({
-      where: { confirmationCode },
-      include: {
-        event: true,
-        user: { select: { id: true, firstName: true, lastName: true, email: true } },
-      },
-    });
-
-    if (!registration) {
-      throw new NotFoundException('Invalid QR code');
-    }
-
-    if (registration.event.organizerId !== organizerId) {
-      throw new ForbiddenException('You can only check in attendees for your own events');
-    }
-
-    return this._performCheckIn(registration.id, organizerId, 'qr_scan');
-  }
-
   async checkInManual(eventId: string, userId: string, organizerId: string) {
     const event = await this.findOne(eventId);
 
@@ -491,10 +390,23 @@ export class EventsService {
       throw new NotFoundException('User is not registered for this event');
     }
 
-    return this._performCheckIn(registration.id, organizerId, 'manual');
+    if (registration.status === 'attended') {
+      throw new BadRequestException('User has already checked in');
+    }
+
+    // Update registration
+    await this.prisma.eventRegistration.update({
+      where: { eventId_userId: { eventId, userId } },
+      data: {
+        status: 'attended',
+        attendedAt: new Date(),
+      },
+    });
+
+    return { message: 'Check-in successful', registrationId: registration.id };
   }
 
-  async selfCheckIn(eventId: string, userId: string, lat?: number, lng?: number) {
+  async selfCheckIn(eventId: string, userId: string) {
     const event = await this.findOne(eventId);
 
     const registration = await this.prisma.eventRegistration.findUnique({
@@ -505,220 +417,24 @@ export class EventsService {
       throw new NotFoundException('User is not registered for this event');
     }
 
-    // Geo-location validation is optional - only validate if coordinates are provided
-    // Note: Event model should have venueLat, venueLng, checkInRadius for full geo-fencing support
-    // For now, we allow self-check-in without geo-validation
-
-    return this._performCheckIn(registration.id, undefined, 'self_check_in', lat, lng);
-  }
-
-  private async _performCheckIn(
-    registrationId: string,
-    checkedInBy?: string,
-    method: string = 'manual',
-    lat?: number,
-    lng?: number
-  ) {
-    const registration = await this.prisma.eventRegistration.findUnique({
-      where: { id: registrationId },
-    });
-
-    if (!registration) {
-      throw new NotFoundException('Registration not found');
-    }
-
-    if (registration.registrationStatus === 'attended') {
+    if (registration.status === 'attended') {
       throw new BadRequestException('User has already checked in');
     }
 
     // Update registration
     await this.prisma.eventRegistration.update({
-      where: { id: registrationId },
-      data: {
-        registrationStatus: 'attended',
-        checkedInAt: new Date(),
-        checkedInBy,
-      },
-    });
-
-    // Create check-in record
-    await this.prisma.eventCheckIn.create({
-      data: {
-        registrationId,
-        method,
-        checkedInBy,
-        locationLat: lat,
-        locationLng: lng,
-      },
-    });
-
-    return { message: 'Check-in successful', registrationId };
-  }
-
-  // ==========================================
-  // Waitlist Management
-  // ==========================================
-
-  async getWaitlist(eventId: string, organizerId: string, page: number = 1, limit: number = 20) {
-    const event = await this.findOne(eventId);
-
-    if (event.organizerId !== organizerId) {
-      throw new ForbiddenException('You can only view waitlist for your own events');
-    }
-
-    const skip = (page - 1) * limit;
-
-    const [waitlist, total] = await Promise.all([
-      this.prisma.eventWaitlist.findMany({
-        where: { eventId },
-        include: {
-          user: {
-            select: { id: true, firstName: true, lastName: true, email: true },
-          },
-        },
-        orderBy: { position: 'asc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.eventWaitlist.count({ where: { eventId } }),
-    ]);
-
-    return {
-      data: waitlist,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    };
-  }
-
-  async getTicketTypes(eventId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-    });
-
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-
-    const ticketTypes = await this.prisma.eventTicketType.findMany({
-      where: { eventId, isActive: true },
-      orderBy: { price: 'asc' },
-    });
-
-    return ticketTypes;
-  }
-
-  async markAttendance(eventId: string, userId: string, organizerId: string) {
-    const event = await this.findOne(eventId);
-
-    if (event.organizerId !== organizerId) {
-      throw new ForbiddenException('Only the organizer can mark attendance');
-    }
-
-    return this.checkInManual(eventId, userId, organizerId);
-  }
-
-  private async _promoteFromWaitlist(eventId: string) {
-    const nextInLine = await this.prisma.eventWaitlist.findFirst({
-      where: { eventId },
-      orderBy: { position: 'asc' },
-      include: { user: { select: { id: true, email: true, firstName: true } } },
-    });
-
-    if (!nextInLine) return;
-
-    // Update registration status
-    await this.prisma.eventRegistration.update({
-      where: { eventId_userId: { eventId, userId: nextInLine.userId } },
-      data: {
-        registrationStatus: 'registered',
-      },
-    });
-
-    // Remove from waitlist
-    await this.prisma.eventWaitlist.delete({
-      where: { eventId_userId: { eventId, userId: nextInLine.userId } },
-    });
-
-    // Update counts
-    await this.prisma.event.update({
-      where: { id: eventId },
-      data: {
-        currentParticipants: { increment: 1 },
-        waitlistCount: { decrement: 1 },
-      },
-    });
-
-    // TODO: Send notification to user about promotion
-
-    // Reorder remaining waitlist
-    await this.prisma.$executeRaw`
-      UPDATE event_waitlist
-      SET position = position - 1
-      WHERE event_id = ${eventId} AND position > ${nextInLine.position}
-    `;
-  }
-
-  // ==========================================
-  // Feedback & Certificates
-  // ==========================================
-
-  async submitFeedback(eventId: string, userId: string, rating: number, comment?: string, wouldRecommend?: boolean) {
-    const registration = await this.prisma.eventRegistration.findUnique({
       where: { eventId_userId: { eventId, userId } },
+      data: {
+        status: 'attended',
+        attendedAt: new Date(),
+      },
     });
 
-    if (!registration || registration.registrationStatus !== 'attended') {
-      throw new BadRequestException('Only attended users can submit feedback');
-    }
-
-    const feedback = await this.prisma.eventFeedback.upsert({
-      where: { eventId_userId: { eventId, userId } },
-      create: { eventId, userId, rating, comment, wouldRecommend: wouldRecommend ?? true },
-      update: { rating, comment, wouldRecommend: wouldRecommend ?? true },
-    });
-
-    return feedback;
-  }
-
-  async generateCertificate(eventId: string, userId: string) {
-    const event = await this.findOne(eventId);
-
-    if (!event.certificateEnabled) {
-      throw new BadRequestException('Certificates are not enabled for this event');
-    }
-
-    const registration = await this.prisma.eventRegistration.findUnique({
-      where: { eventId_userId: { eventId, userId } },
-    });
-
-    if (!registration || registration.registrationStatus !== 'attended') {
-      throw new BadRequestException('Only attended users can receive certificates');
-    }
-
-    // Check if certificate already exists
-    const existing = await this.prisma.eventCertificate.findUnique({
-      where: { eventId_userId: { eventId, userId } },
-    });
-
-    if (existing) {
-      return existing;
-    }
-
-    const certificateCode = `CERT-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-
-    const certificate = await this.prisma.eventCertificate.create({
-      data: { eventId, userId, certificateCode },
-    });
-
-    return certificate;
+    return { message: 'Self check-in successful', registrationId: registration.id };
   }
 
   // ==========================================
-  // Analytics
+  // Simple Analytics
   // ==========================================
 
   async getEventAnalytics(eventId: string, organizerId: string) {
@@ -730,17 +446,11 @@ export class EventsService {
 
     const registrations = await this.prisma.eventRegistration.findMany({
       where: { eventId },
-      select: { registrationStatus: true },
-    });
-
-    const feedback = await this.prisma.eventFeedback.aggregate({
-      where: { eventId },
-      _avg: { rating: true },
-      _count: true,
+      select: { status: true },
     });
 
     const statusCounts = registrations.reduce((acc, r) => {
-      acc[r.registrationStatus] = (acc[r.registrationStatus] || 0) + 1;
+      acc[r.status] = (acc[r.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
@@ -753,22 +463,10 @@ export class EventsService {
       totalRegistrations: registrations.length,
       statusCounts,
       attendanceRate: `${attendanceRate}%`,
-      viewCount: event.viewCount,
-      shareCount: event.shareCount,
-      waitlistCount: event.waitlistCount,
-      averageRating: feedback._avg.rating?.toFixed(2) || 'N/A',
-      totalFeedback: feedback._count,
       capacityUsage: event.maxParticipants
         ? `${((event.currentParticipants / event.maxParticipants) * 100).toFixed(2)}%`
         : 'Unlimited',
     };
-  }
-
-  async incrementViewCount(eventId: string) {
-    await this.prisma.event.update({
-      where: { id: eventId },
-      data: { viewCount: { increment: 1 } },
-    });
   }
 
   // ==========================================
@@ -786,7 +484,6 @@ export class EventsService {
           avatarUrl: true,
         },
       },
-      _count: { select: { registrations: true } },
     };
   }
 
@@ -797,13 +494,9 @@ export class EventsService {
       title: event.title,
       slug: event.slug,
       description: event.description,
-      shortDescription: event.shortDescription,
       coverImage: event.coverImage,
       eventType: event.eventType,
-      category: event.category,
       location: event.location,
-      venueName: event.venueName,
-      venueAddress: event.venueAddress,
       isOnline: event.isOnline,
       meetingLink: event.isOnline ? event.meetingLink : undefined,
       startDate: event.startDate,
@@ -811,46 +504,13 @@ export class EventsService {
       registrationDeadline: event.registrationDeadline,
       maxParticipants: event.maxParticipants,
       currentParticipants: event.currentParticipants,
-      waitlistEnabled: event.waitlistEnabled,
-      waitlistCount: event.waitlistCount,
       isFree: event.isFree,
       ticketPrice: event.ticketPrice ? Number(event.ticketPrice) : null,
       isActive: event.isActive,
-      eventStatus: event.eventStatus,
-      isFeatured: event.isFeatured,
-      viewCount: event.viewCount,
-      shareCount: event.shareCount,
-      certificateEnabled: event.certificateEnabled,
+      status: event.status,
       organizer: event.organizer,
-      registrationsCount: event._count?.registrations || 0,
       createdAt: event.createdAt,
       updatedAt: event.updatedAt,
     };
-  }
-
-  private _generateConfirmationCode(): string {
-    return `EVT-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-  }
-
-  private _generateQRCode(confirmationCode: string): string {
-    // In production, use a QR code library to generate actual QR image
-    return Buffer.from(confirmationCode).toString('base64');
-  }
-
-  private _decodeQRCode(qrCode: string): string {
-    return Buffer.from(qrCode, 'base64').toString('utf-8');
-  }
-
-  private _calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6371e3; // Earth's radius in meters
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lng2 - lng1) * Math.PI) / 180;
-
-    const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
   }
 }

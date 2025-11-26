@@ -76,7 +76,7 @@ export class AuthService {
         referralCode,
         emailVerificationToken,
         referredBy: referrerId,
-        verificationStatus: UserVerificationStatus.unverified,
+        verificationStatus: 'pending',
       },
       select: {
         id: true,

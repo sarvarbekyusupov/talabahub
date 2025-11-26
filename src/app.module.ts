@@ -16,7 +16,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { EducationPartnersModule } from './education-partners/education-partners.module';
 import { CoursesModule } from './courses/courses.module';
 import { ReviewsModule } from './reviews/reviews.module';
-import { BlogPostsModule } from './blog-posts/blog-posts.module';
+// import { BlogPostsModule } from './blog-posts/blog-posts.module'; // Disabled temporarily
 import { EventsModule } from './events/events.module';
 import { MailModule } from './mail/mail.module';
 import { UploadModule } from './upload/upload.module';
@@ -30,8 +30,8 @@ import { SearchModule } from './search/search.module';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
-import { BlogContentModule } from './blog-content/blog-content.module';
-import { ResumesModule } from './resumes/resumes.module';
+// import { BlogContentModule } from './blog-content/blog-content.module'; // Module removed
+// import { ResumesModule } from './resumes/resumes.module'; // Disabled - resume model doesn't exist
 import { VerificationModule } from './verification/verification.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -63,7 +63,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     EducationPartnersModule,
     CoursesModule,
     ReviewsModule,
-    BlogPostsModule,
+    // BlogPostsModule, // Disabled temporarily
     EventsModule,
     MailModule,
     UploadModule,
@@ -77,8 +77,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     SavedSearchesModule,
     NotificationsModule,
     AnalyticsModule,
-    BlogContentModule,
-    ResumesModule,
+    // BlogContentModule, // Module removed
+    // ResumesModule, // Disabled - resume model doesn't exist
     VerificationModule,
   ],
   controllers: [AppController],

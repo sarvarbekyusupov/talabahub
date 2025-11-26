@@ -23,10 +23,10 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import {
   RegisterEventDto,
-  SubmitFeedbackDto,
   SelfCheckInDto,
-  CheckInByQRDto,
-  CancelEventDto,
+  // SubmitFeedbackDto - Disabled: Feedback system not available in simplified service
+  // CheckInByQRDto - Not used in current implementation
+  // CancelEventDto - Not used in current implementation
 } from './dto/register-event.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
@@ -64,7 +64,8 @@ export class EventsController {
   @ApiOperation({ summary: 'Get all events with filtering and pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'type', required: false, type: String })
+  @ApiQuery({ name: 'eventType', required: false, type: String })
+  @ApiQuery({ name: 'status', required: false, type: String })
   @ApiQuery({ name: 'isOnline', required: false, type: Boolean })
   @ApiQuery({ name: 'organizerId', required: false, type: String })
   @ApiQuery({ name: 'startDate', required: false, type: String })
@@ -74,22 +75,24 @@ export class EventsController {
   async findAll(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-    @Query('type') type?: string,
+    @Query('eventType') eventType?: string,
     @Query('isOnline') isOnline?: boolean,
     @Query('organizerId') organizerId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('search') search?: string,
+    @Query('status') status?: string,
   ) {
     return this.eventsService.findAll({
       page,
       limit,
-      type,
+      eventType,
       isOnline,
       organizerId,
       startDate,
       endDate,
       search,
+      status,
     });
   }
 
@@ -116,15 +119,7 @@ export class EventsController {
     return this.eventsService.findOne(id);
   }
 
-  @Get(':id/ticket-types')
-  @Public()
-  @ApiOperation({ summary: 'Get ticket types for an event' })
-  @ApiParam({ name: 'id', description: 'Event ID (UUID)' })
-  @ApiResponse({ status: 200, description: 'Ticket types retrieved' })
-  async getTicketTypes(@Param('id') id: string) {
-    return this.eventsService.getTicketTypes(id);
-  }
-
+  
   @Patch(':id')
   @AuditLog(AuditAction.UPDATE, 'Event')
   @Roles(UserRole.admin, UserRole.partner)
@@ -155,15 +150,7 @@ export class EventsController {
   // Event Status Workflow
   // ==========================================
 
-  @Post(':id/publish')
-  @Roles(UserRole.admin, UserRole.partner)
-  @ApiOperation({ summary: 'Publish an event (Organizer only)' })
-  @ApiParam({ name: 'id', description: 'Event ID (UUID)' })
-  @ApiResponse({ status: 200, description: 'Event published' })
-  async publishEvent(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.eventsService.publishEvent(id, user.id);
-  }
-
+  
   @Post(':id/cancel')
   @Roles(UserRole.admin, UserRole.partner)
   @ApiOperation({ summary: 'Cancel an event (Organizer only)' })
@@ -172,9 +159,8 @@ export class EventsController {
   async cancelEvent(
     @Param('id') id: string,
     @CurrentUser() user: any,
-    @Body() cancelDto: CancelEventDto,
   ) {
-    return this.eventsService.cancelEvent(id, user.id, cancelDto.reason ?? '');
+    return this.eventsService.cancelEvent(id, user.id);
   }
 
   // ==========================================
@@ -194,12 +180,7 @@ export class EventsController {
     @CurrentUser() user: any,
     @Body() registerDto: RegisterEventDto,
   ) {
-    return this.eventsService.registerUser(
-      id,
-      user.id,
-      registerDto.ticketTypeId,
-      registerDto.answers,
-    );
+    return this.eventsService.registerUser(id, user.id);
   }
 
   @Delete(':id/unregister')
@@ -211,6 +192,14 @@ export class EventsController {
     return this.eventsService.unregisterUser(id, user.id);
   }
 
+  // ==========================================
+  // Waitlist Management - DISABLED
+  // ==========================================
+  // Waitlist functionality is not available in the simplified events service
+  // This feature would require additional database tables and complex logic
+  // To enable waitlist, implement getWaitlist() method in events.service.ts
+
+  /*
   @Get(':id/waitlist')
   @Roles(UserRole.admin, UserRole.partner)
   @ApiOperation({ summary: 'Get event waitlist (Organizer only)' })
@@ -231,6 +220,7 @@ export class EventsController {
       limit ? Number(limit) : 20,
     );
   }
+  */
 
   // ==========================================
   // Attendee Management
@@ -249,27 +239,20 @@ export class EventsController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.eventsService.getEventAttendees(id, user.id, page, limit);
+    // Service method signature: getEventAttendees(eventId, organizerId, page, limit, status?)
+    return this.eventsService.getEventAttendees(
+      id,
+      user.id,
+      page ? Number(page) : 1,
+      limit ? Number(limit) : 10
+    );
   }
 
   // ==========================================
   // Check-in System
   // ==========================================
 
-  @Post(':id/check-in/qr')
-  @Roles(UserRole.admin, UserRole.partner)
-  @ApiOperation({ summary: 'Check in attendee by QR code (Organizer only)' })
-  @ApiParam({ name: 'id', description: 'Event ID (UUID)' })
-  @ApiResponse({ status: 200, description: 'Check-in successful' })
-  @ApiResponse({ status: 400, description: 'Invalid QR code or already checked in' })
-  async checkInByQR(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-    @Body() checkInDto: CheckInByQRDto,
-  ) {
-    return this.eventsService.checkInByQR(checkInDto.qrCode, user.id);
-  }
-
+  
   @Post(':id/attendees/:userId/check-in')
   @Roles(UserRole.admin, UserRole.partner)
   @ApiOperation({ summary: 'Manually check in attendee (Organizer only)' })
@@ -294,14 +277,19 @@ export class EventsController {
     @CurrentUser() user: any,
     @Body() selfCheckInDto: SelfCheckInDto,
   ) {
-    return this.eventsService.selfCheckIn(
-      id,
-      user.id,
-      selfCheckInDto.latitude,
-      selfCheckInDto.longitude,
-    );
+    // Note: Simplified service only accepts eventId and userId
+    // Location verification with latitude/longitude is not implemented
+    return this.eventsService.selfCheckIn(id, user.id);
   }
 
+  // ==========================================
+  // Attendance Marking - DISABLED
+  // ==========================================
+  // Legacy attendance marking functionality is not available in the simplified events service
+  // Use the check-in system instead (manual check-in or self check-in)
+  // This functionality is redundant with the check-in features
+
+  /*
   @Post(':id/attendees/:userId/mark-attendance')
   @Roles(UserRole.admin, UserRole.partner)
   @ApiOperation({ summary: 'Mark user attendance for event (legacy)' })
@@ -315,11 +303,21 @@ export class EventsController {
   ) {
     return this.eventsService.markAttendance(id, userId, user.id);
   }
+  */
 
   // ==========================================
   // Feedback & Certificates
   // ==========================================
 
+  // ==========================================
+  // Feedback System - DISABLED
+  // ==========================================
+  // Event feedback functionality is not available in the simplified events service
+  // This feature would require additional database tables for feedback storage
+  // To enable feedback, implement submitFeedback() method in events.service.ts
+  // and create EventFeedback model in the database schema
+
+  /*
   @Post(':id/feedback')
   @ApiOperation({ summary: 'Submit feedback for an event' })
   @ApiParam({ name: 'id', description: 'Event ID (UUID)' })
@@ -337,7 +335,16 @@ export class EventsController {
       feedbackDto.comment,
     );
   }
+  */
 
+  // ==========================================
+  // Certificate System - DISABLED
+  // ==========================================
+  // Certificate generation functionality is not available in the simplified events service
+  // This feature would require PDF generation libraries and certificate templates
+  // To enable certificates, implement generateCertificate() method in events.service.ts
+
+  /*
   @Get(':id/certificate')
   @ApiOperation({ summary: 'Get attendance certificate' })
   @ApiParam({ name: 'id', description: 'Event ID (UUID)' })
@@ -346,6 +353,7 @@ export class EventsController {
   async getCertificate(@Param('id') id: string, @CurrentUser() user: any) {
     return this.eventsService.generateCertificate(id, user.id);
   }
+  */
 
   // ==========================================
   // Analytics

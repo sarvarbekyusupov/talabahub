@@ -94,7 +94,7 @@ export async function createUser(data?: Partial<any>) {
       courseYear: randomInt(1, 4),
       graduationYear: randomInt(2022, 2028),
       faculty: randomElement(['Computer Science', 'Engineering', 'Business', 'Medicine', 'Law']),
-      verificationStatus: randomElement(['unverified', 'email_verified', 'pending_verification', 'verified', 'rejected']),
+      verificationStatus: randomElement(['pending', 'verified', 'rejected']),
       role: 'student',
       ...data,
     },
@@ -485,8 +485,8 @@ export async function createEventRegistration(userId?: string, eventId?: string,
     data: {
       eventId: event.id,
       userId: user.id,
-      registrationStatus: randomElement(['registered', 'attended', 'cancelled']),
-      confirmationCode: `EVT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      // registrationStatus field doesn't exist in EventRegistration model
+      // confirmationCode field doesn't exist in EventRegistration model
       amountPaid: randomBoolean(0.3) ? randomInt(50000, 200000) : null,
       paymentMethod: randomBoolean(0.3) ? randomElement(['payme', 'click']) : null,
       ...data,
@@ -557,7 +557,7 @@ export async function createBlogPost(authorId?: string, data?: Partial<any>) {
       viewCount: randomInt(0, 1000),
       readTimeMinutes: randomInt(3, 10),
       status: 'published',
-      featured: randomBoolean(0.2),
+      // featured field doesn't exist in BlogPost model
       publishedAt: new Date(),
       ...data,
     },

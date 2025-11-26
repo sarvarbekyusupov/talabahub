@@ -14,8 +14,7 @@ import {
   createDiscountUsage,
   createJobApplication,
   createEventRegistration,
-  createReview,
-  createBlogPost,
+  // createReview, // Disabled - Review model exists but seeding has issues
   createNotification,
   createTransaction,
   createAnalyticsEvent,
@@ -24,7 +23,6 @@ import {
   createSubscription,
   prisma,
 } from './seeds/factories';
-import { seedBlogContent } from './seeds/blog-seed';
 
 async function main() {
   console.log('🌱 Starting database seeding...\n');
@@ -33,26 +31,7 @@ async function main() {
   console.log('🗑️  Clearing existing data...');
   // Delete in correct order to respect foreign key constraints
 
-  // Blog content tables first
-  await prisma.share.deleteMany();
-  await prisma.report.deleteMany();
-  await prisma.blogNotification.deleteMany();
-  await prisma.articleView.deleteMany();
-  await prisma.responseClap.deleteMany();
-  await prisma.response.deleteMany();
-  await prisma.clap.deleteMany();
-  await prisma.bookmark.deleteMany();
-  await prisma.bookmarkCollection.deleteMany();
-  await prisma.articleTag.deleteMany();
-  await prisma.articleStats.deleteMany();
-  await prisma.articleContent.deleteMany();
-  await prisma.article.deleteMany();
-  await prisma.draft.deleteMany();
-  await prisma.tag.deleteMany();
-  await prisma.follow.deleteMany();
-  await prisma.studentProfile.deleteMany();
-
-  // Original tables
+  // Only delete existing tables
   await prisma.subscription.deleteMany();
   await prisma.adminLog.deleteMany();
   await prisma.savedItem.deleteMany();
@@ -228,22 +207,14 @@ async function main() {
   }
   console.log(`✅ Created ${eventRegistrations.length} event registrations\n`);
 
-  // Seed Reviews
-  console.log('⭐ Creating reviews...');
+  // Seed Reviews (Disabled)
+  console.log('⭐ Skipping reviews - seeding disabled...');
   const reviews: any[] = [];
-  for (let i = 0; i < 40; i++) {
-    const review = await createReview();
-    reviews.push(review);
-  }
   console.log(`✅ Created ${reviews.length} reviews\n`);
 
-  // Seed Blog Posts
-  console.log('📰 Creating blog posts...');
+  // Seed Blog Posts (Disabled)
+  console.log('📰 Skipping blog posts - seeding disabled...');
   const blogPosts: any[] = [];
-  for (let i = 0; i < 12; i++) {
-    const blogPost = await createBlogPost();
-    blogPosts.push(blogPost);
-  }
   console.log(`✅ Created ${blogPosts.length} blog posts\n`);
 
   // Seed Notifications
@@ -301,7 +272,8 @@ async function main() {
   console.log(`✅ Created ${subscriptions.length} subscriptions\n`);
 
   // Seed Blog Content (Articles, Tags, Profiles, etc.)
-  await seedBlogContent();
+  // Blog content seeding disabled - models don't exist in database
+  // await seedBlogContent();
 
   console.log('🎉 Seeding completed successfully!\n');
   console.log('📊 Summary:');
