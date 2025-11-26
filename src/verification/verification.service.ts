@@ -4,9 +4,11 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { UniversityDomainService } from './services/university-domain.service';
 import {
   SubmitVerificationDto,
   VerificationDocumentTypeDto,
@@ -39,9 +41,12 @@ import {
 
 @Injectable()
 export class VerificationService {
+  private readonly logger = new Logger(VerificationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService,
+    private readonly universityDomainService: UniversityDomainService,
   ) {}
 
   // =============================================
@@ -77,90 +82,116 @@ export class VerificationService {
     return { message: 'Verification email sent successfully' };
   }
 
-  async verifyEmail(token: string): Promise<{ message: string; autoVerified: boolean }> {
+  async verifyEmail(token: string): Promise<{ message: string; autoVerified: boolean; universityName?: string }> {
     const user = await this.prisma.user.findFirst({
       where: { emailVerificationToken: token },
     });
 
     if (!user) {
-      throw new BadRequestException('Invalid verification token');
+      throw new BadRequestException('Invalid or expired verification token');
     }
 
-    // Check if email domain is from a university with auto-verification
-    const emailDomain = user.email.split('@')[1];
-    const universityDomain = await this.prisma.universityDomain.findFirst({
-      where: {
-        domain: emailDomain,
-        isActive: true,
-        autoVerify: true,
-      },
-      include: {
-        university: true,
-      },
-    });
+    // Check for fraud suspicion
+    const suspicionCheck = await this.universityDomainService.checkEmailSuspicion(user.email, user.id);
+    if (suspicionCheck.suspicious) {
+      await this.logVerificationActivity(user.id, 'EMAIL_VERIFICATION_FLAGGED', {
+        reasons: suspicionCheck.reasons,
+        score: suspicionCheck.score,
+        email: user.email,
+      });
 
-    // Also check the main university email domain
-    const university = await this.prisma.university.findFirst({
-      where: {
-        emailDomain: emailDomain,
-        isActive: true,
-        autoVerifyEmail: true,
-      },
-    });
+      // Allow but mark for manual review
+      this.logger.warn(`Suspicious email flagged: ${user.email}`, {
+        userId: user.id,
+        reasons: suspicionCheck.reasons,
+        score: suspicionCheck.score,
+      });
+    }
 
-    const autoVerify = universityDomain || university;
-    const universityId = universityDomain?.universityId || university?.id;
+    // Analyze email for university verification
+    const emailAnalysis = await this.universityDomainService.analyzeEmail(user.email);
 
-    // Update user verification status
+    let autoVerified = false;
+    let universityName: string | undefined;
     const updateData: any = {
       isEmailVerified: true,
       emailVerificationToken: null,
-      verificationStatus: autoVerify
-        ? UserVerificationStatus.verified
-        : UserVerificationStatus.email_verified,
+      verificationStatus: UserVerificationStatus.email_verified, // Default status
     };
 
-    if (autoVerify) {
+    // Handle auto-verification for university emails
+    if (emailAnalysis.isUniversity && emailAnalysis.autoVerify && emailAnalysis.confidence === 'high') {
+      autoVerified = true;
+      universityName = emailAnalysis.universityName;
+
+      updateData.verificationStatus = UserVerificationStatus.verified;
       updateData.verificationMethod = StudentVerificationMethod.university_email;
       updateData.verificationDate = new Date();
       updateData.lastVerificationDate = new Date();
-      // Set next verification due to September of next academic year
-      const nextYear = new Date().getMonth() >= 8
-        ? new Date().getFullYear() + 1
-        : new Date().getFullYear();
-      updateData.nextVerificationDue = new Date(nextYear, 8, 1); // September 1st
 
-      if (universityId && !user.universityId) {
-        updateData.universityId = universityId;
+      // Set next verification due to graduation date + 3 months buffer
+      const graduationYear = new Date().getFullYear() + 4; // Assume 4-year program
+      updateData.expectedGraduationDate = new Date(graduationYear, 8, 1); // September 1
+      updateData.nextVerificationDue = new Date(graduationYear + 1, 8, 1); // Next September
+
+      if (emailAnalysis.universityId) {
+        updateData.universityId = emailAnalysis.universityId;
       }
+
+      await this.logVerificationActivity(user.id, 'AUTO_VERIFICATION_SUCCESS', {
+        email: user.email,
+        university: emailAnalysis.universityName,
+        domain: emailAnalysis.domain,
+        confidence: emailAnalysis.confidence,
+      });
+    } else if (emailAnalysis.isUniversity && emailAnalysis.confidence === 'medium') {
+      // University email but requires manual review
+      updateData.verificationStatus = UserVerificationStatus.email_verified;
+      updateData.requiresManualReview = true;
+
+      await this.logVerificationActivity(user.id, 'MANUAL_VERIFICATION_REQUIRED', {
+        email: user.email,
+        domain: emailAnalysis.domain,
+        confidence: emailAnalysis.confidence,
+        reason: 'Medium confidence university domain',
+      });
     }
 
+    // Update user record
     await this.prisma.user.update({
       where: { id: user.id },
       data: updateData,
     });
 
-    // Log the verification
-    await this.createAuditLog(user.id, 'email_verified', {
-      previousStatus: user.verificationStatus,
-      newStatus: updateData.verificationStatus,
-      autoVerified: !!autoVerify,
-      universityId,
+    // Log the email verification
+    await this.logVerificationActivity(user.id, 'EMAIL_VERIFIED', {
+      email: user.email,
+      autoVerified,
+      requiresManualReview: emailAnalysis.requiresManualReview,
+      suspicionScore: suspicionCheck.score,
     });
 
-    // Send welcome email
-    await this.mailService.sendWelcomeEmail(user.email, user.firstName);
-
-    if (autoVerify) {
-      return {
-        message: 'Email verified and student status automatically confirmed based on your university email.',
-        autoVerified: true,
-      };
+    // Send appropriate email
+    if (autoVerified) {
+      await this.sendVerificationResultEmail(user, VerificationDecision.APPROVE);
+    } else {
+      // Send email to complete verification with documents
+      await this.mailService.sendVerificationMoreInfo(
+        user.email,
+        user.firstName,
+        'Your email has been verified! Please complete your student verification by uploading your student ID.',
+        emailAnalysis.requiresManualReview ?
+          ['Your university email requires manual verification', 'Please upload your student ID to complete verification'] :
+          ['Upload your student ID to unlock all features']
+      );
     }
 
     return {
-      message: 'Email verified successfully. Please complete student verification to access all features.',
-      autoVerified: false,
+      message: autoVerified
+        ? `Email verified! Your student status has been confirmed automatically through ${universityName || 'your university'}.`
+        : 'Email verified successfully! Please complete your student verification to access all features.',
+      autoVerified,
+      universityName,
     };
   }
 
@@ -844,6 +875,201 @@ export class VerificationService {
   }
 
   // =============================================
+  // GRACE PERIOD MANAGEMENT
+  // =============================================
+
+  async enterGracePeriod(
+    userId: string,
+    gracePeriodDays: number = 14,
+    reason: string = 'Verification expired - grace period granted',
+  ): Promise<{ message: string; gracePeriodEnds: Date }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const gracePeriodEnds = new Date();
+    gracePeriodEnds.setDate(gracePeriodEnds.getDate() + gracePeriodDays);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        verificationStatus: UserVerificationStatus.grace_period,
+        nextVerificationDue: gracePeriodEnds,
+        verificationNotes: reason,
+      },
+    });
+
+    await this.createAuditLog(userId, 'grace_period_started', {
+      previousStatus: user.verificationStatus,
+      newStatus: UserVerificationStatus.grace_period,
+      gracePeriodDays,
+      gracePeriodEnds,
+      reason,
+    });
+
+    // Send grace period notification email
+    await this.mailService.sendGracePeriodStarted(
+      user.email,
+      user.firstName,
+      gracePeriodEnds.toLocaleDateString(),
+      reason,
+    );
+
+    return {
+      message: `Grace period granted. You have ${gracePeriodDays} days to re-verify your student status.`,
+      gracePeriodEnds,
+    };
+  }
+
+  async checkGracePeriodEligibility(userId: string): Promise<{
+    eligible: boolean;
+    reason: string;
+    suggestedGracePeriodDays: number;
+  }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        verificationRequests: {
+          where: { status: VerificationRequestStatus.rejected },
+          orderBy: { reviewedAt: 'desc' },
+          take: 3,
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check if user is currently in grace period
+    if (user.verificationStatus === UserVerificationStatus.grace_period) {
+      return {
+        eligible: false,
+        reason: 'User is already in grace period',
+        suggestedGracePeriodDays: 0,
+      };
+    }
+
+    // Check if user has verified history
+    const hasVerifiedHistory = user.verificationDate !== null;
+    if (!hasVerifiedHistory) {
+      return {
+        eligible: false,
+        reason: 'No previous verification history found',
+        suggestedGracePeriodDays: 0,
+      };
+    }
+
+    // Calculate suggested grace period based on user history
+    let gracePeriodDays = 7; // Default
+    let eligible = false;
+    let reason = '';
+
+    // Check verification history length
+    const verificationDuration = user.verificationDate
+      ? Math.floor((Date.now() - user.verificationDate.getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+
+    // Long-term verified users get longer grace period
+    if (verificationDuration > 365) {
+      gracePeriodDays = 21;
+      eligible = true;
+      reason = 'Long-term verified user (1+ year)';
+    } else if (verificationDuration > 180) {
+      gracePeriodDays = 14;
+      eligible = true;
+      reason = 'Established verified user (6+ months)';
+    } else if (verificationDuration > 30) {
+      gracePeriodDays = 10;
+      eligible = true;
+      reason = 'Recent verified user (1+ month)';
+    }
+
+    // Check for fraud history
+    if (user.fraudScore && user.fraudScore > 50) {
+      gracePeriodDays = Math.max(3, gracePeriodDays - 7); // Reduce grace period for high fraud scores
+      reason += ' (adjusted for fraud history)';
+    }
+
+    // Check for recent rejections
+    const recentRejections = user.verificationRequests.filter(
+      req => req.reviewedAt &&
+      Date.now() - req.reviewedAt.getTime() < 30 * 24 * 60 * 60 * 1000 // Last 30 days
+    );
+
+    if (recentRejections.length > 2) {
+      eligible = false;
+      reason = 'Too many recent rejections';
+      gracePeriodDays = 0;
+    } else if (recentRejections.length > 0) {
+      gracePeriodDays = Math.max(5, gracePeriodDays - 5); // Reduce grace period for recent rejections
+      reason += ' (adjusted for recent rejections)';
+    }
+
+    return {
+      eligible,
+      reason: reason || 'Standard grace period eligibility',
+      suggestedGracePeriodDays: eligible ? gracePeriodDays : 0,
+    };
+  }
+
+  async extendGracePeriod(
+    userId: string,
+    additionalDays: number,
+    adminId: string,
+    reason: string,
+  ): Promise<{ message: string; newGracePeriodEnds: Date }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.verificationStatus !== UserVerificationStatus.grace_period) {
+      throw new BadRequestException('User is not currently in grace period');
+    }
+
+    const currentEndDate = user.nextVerificationDue || new Date();
+    const newGracePeriodEnds = new Date(currentEndDate);
+    newGracePeriodEnds.setDate(newGracePeriodEnds.getDate() + additionalDays);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        nextVerificationDue: newGracePeriodEnds,
+        verificationNotes: `Grace period extended. ${reason}`,
+      },
+    });
+
+    await this.createAuditLog(userId, 'grace_period_extended', {
+      previousEndDate: currentEndDate,
+      newEndDate: newGracePeriodEnds,
+      additionalDays,
+      reason,
+      performedById: adminId,
+    }, adminId);
+
+    // Send extension notification email
+    await this.mailService.sendGracePeriodExtended(
+      user.email,
+      user.firstName,
+      newGracePeriodEnds.toLocaleDateString(),
+      reason,
+    );
+
+    return {
+      message: `Grace period extended by ${additionalDays} days.`,
+      newGracePeriodEnds,
+    };
+  }
+
+  // =============================================
   // RE-VERIFICATION CRON JOB HELPERS
   // =============================================
 
@@ -885,6 +1111,14 @@ export class VerificationService {
   // =============================================
   // HELPER METHODS
   // =============================================
+
+  private async logVerificationActivity(
+    userId: string,
+    action: string,
+    metadata: any,
+  ): Promise<void> {
+    await this.createAuditLog(userId, action, metadata);
+  }
 
   private generateToken(): string {
     return randomBytes(32).toString('hex');
@@ -1000,24 +1234,52 @@ export class VerificationService {
     decision: VerificationDecision,
     message?: string,
   ): Promise<void> {
-    // TODO: Create proper email templates for these
     try {
       switch (decision) {
         case VerificationDecision.APPROVE:
           // Send approval email
-          // await this.mailService.sendVerificationApproved(user.email, user.firstName);
+          await this.mailService.sendVerificationApproved(
+            user.email,
+            user.firstName,
+            user.nextVerificationDue?.toLocaleDateString()
+          );
           break;
         case VerificationDecision.REJECT:
           // Send rejection email
-          // await this.mailService.sendVerificationRejected(user.email, user.firstName, message);
+          await this.mailService.sendVerificationRejected(
+            user.email,
+            user.firstName,
+            message || 'Your verification was rejected. Please re-submit with correct documents.'
+          );
           break;
         case VerificationDecision.REQUEST_MORE_INFO:
           // Send more info needed email
-          // await this.mailService.sendVerificationMoreInfo(user.email, user.firstName, message);
+          await this.mailService.sendVerificationMoreInfo(
+            user.email,
+            user.firstName,
+            message || 'We need additional information to complete your verification.',
+            ['Please provide clear documents', 'Ensure all information is visible']
+          );
           break;
       }
     } catch (error) {
       console.error('Failed to send verification result email:', error);
     }
+  }
+
+  // =============================================
+  // UNIVERSITY DOMAIN MANAGEMENT
+  // =============================================
+
+  async getSupportedDomains() {
+    return this.universityDomainService.getSupportedDomains();
+  }
+
+  async addUniversityDomain(data: {
+    universityId: number;
+    domain: string;
+    autoVerify: boolean;
+  }) {
+    return this.universityDomainService.addUniversityDomain(data);
   }
 }

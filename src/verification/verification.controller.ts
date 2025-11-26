@@ -11,6 +11,8 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -44,11 +46,24 @@ import {
   VerificationListResponse,
   VerificationStatsResponse,
 } from './dto/verification-response.dto';
+import {
+  EnterGracePeriodDto,
+  ExtendGracePeriodDto,
+  UniversityDomainDto,
+  UpdateFraudScoreDto,
+  GracePeriodEligibilityResponse,
+  ExpiringGracePeriodResponse,
+  SuspiciousEmailResponse,
+} from './dto/grace-period.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @ApiTags('Verification')
 @Controller('verification')
 export class VerificationController {
-  constructor(private readonly verificationService: VerificationService) {}
+  constructor(
+    private readonly verificationService: VerificationService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // =============================================
   // PUBLIC ENDPOINTS
@@ -219,5 +234,180 @@ export class VerificationController {
   @ApiResponse({ status: 200, description: 'Duplicate check results' })
   async checkDuplicates(@Param('userId', ParseUUIDPipe) userId: string) {
     return this.verificationService.checkForDuplicates(userId);
+  }
+
+  // =============================================
+  // GRACE PERIOD ENDPOINTS
+  // =============================================
+
+  @Post('grace-period/enter')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Enter grace period for user (Admin)' })
+  @ApiResponse({ status: 200, description: 'Grace period granted successfully' })
+  async enterGracePeriod(
+    @Body() dto: EnterGracePeriodDto,
+    @Request() req,
+  ) {
+    try {
+      await this.verificationService.enterGracePeriod(
+        dto.userId,
+        dto.gracePeriodDays,
+        dto.reason,
+      );
+      return { message: 'Grace period granted successfully' };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  @Get('grace-period/eligibility/:userId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check grace period eligibility' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, type: GracePeriodEligibilityResponse, description: 'Grace period eligibility check' })
+  async checkGracePeriodEligibility(@Param('userId', ParseUUIDPipe) userId: string): Promise<GracePeriodEligibilityResponse> {
+    try {
+      return await this.verificationService.checkGracePeriodEligibility(userId);
+    } catch (error) {
+      throw new NotFoundException(error.message);
+    }
+  }
+
+  @Post('grace-period/extend')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Extend grace period for user (Admin)' })
+  @ApiResponse({ status: 200, description: 'Grace period extended successfully' })
+  async extendGracePeriod(
+    @Body() dto: ExtendGracePeriodDto,
+    @Request() req,
+  ) {
+    try {
+      await this.verificationService.extendGracePeriod(
+        dto.userId,
+        dto.additionalDays,
+        req.user.id,
+        dto.reason,
+      );
+      return { message: 'Grace period extended successfully' };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  @Get('grace-period/expiring')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get users with expiring grace periods (Admin)' })
+  @ApiResponse({ status: 200, type: [ExpiringGracePeriodResponse], description: 'List of users with expiring grace periods' })
+  async getExpiringGracePeriods(): Promise<ExpiringGracePeriodResponse[]> {
+    try {
+      const now = new Date();
+      const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+      return await this.prisma.user.findMany({
+        where: {
+          verificationStatus: 'grace_period',
+          nextVerificationDue: {
+            gte: now,
+            lte: threeDaysFromNow,
+          },
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          nextVerificationDue: true,
+          verificationNotes: true,
+        },
+        orderBy: { nextVerificationDue: 'asc' },
+      });
+    } catch (error) {
+      throw new BadRequestException('Failed to fetch expiring grace periods');
+    }
+  }
+
+  // =============================================
+  // UNIVERSITY DOMAIN ENDPOINTS
+  // =============================================
+
+  @Get('university-domains')
+  @ApiOperation({ summary: 'Get supported university domains' })
+  @ApiResponse({ status: 200, description: 'List of supported university domains' })
+  async getSupportedUniversityDomains() {
+    return this.verificationService.getSupportedDomains();
+  }
+
+  @Post('admin/university-domains')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Add university domain (Admin)' })
+  @ApiResponse({ status: 200, description: 'University domain added successfully' })
+  async addUniversityDomain(@Body() dto: UniversityDomainDto) {
+    try {
+      await this.verificationService.addUniversityDomain(dto);
+      return { message: 'University domain added successfully' };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  // =============================================
+  // FRAUD DETECTION ENDPOINTS
+  // =============================================
+
+  @Post('admin/fraud-score/:userId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update user fraud score (Admin)' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Fraud score updated successfully' })
+  async updateFraudScore(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Body() dto: UpdateFraudScoreDto,
+  ) {
+    try {
+      await this.verificationService.updateFraudScore(userId, dto.scoreChange, dto.reason);
+      return { message: 'Fraud score updated successfully' };
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  @Get('admin/suspicious-emails')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.admin)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get suspicious emails for review (Admin)' })
+  @ApiResponse({ status: 200, type: [SuspiciousEmailResponse], description: 'List of suspicious emails' })
+  async getSuspiciousEmails(): Promise<SuspiciousEmailResponse[]> {
+    try {
+      return await this.prisma.user.findMany({
+        where: {
+          fraudScore: { gte: 50 },
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          fraudScore: true,
+          verificationStatus: true,
+          createdAt: true,
+        },
+        orderBy: { fraudScore: 'desc' },
+        take: 100,
+      });
+    } catch (error) {
+      throw new BadRequestException('Failed to fetch suspicious emails');
+    }
   }
 }

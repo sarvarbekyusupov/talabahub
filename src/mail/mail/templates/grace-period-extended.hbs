@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grace Period Extended - TalabaHub</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f39c12;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        .title {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .update-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .update-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .new-date {
+            background-color: #f39c12;
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .message {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #f39c12;
+        }
+        .button {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 10px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #2980b9;
+        }
+        .button-secondary {
+            background-color: #95a5a6;
+        }
+        .button-secondary:hover {
+            background-color: #7f8c8d;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .info-box {
+            background-color: #e8f5e8;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .warning-box {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .reason-box {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🎓 TalabaHub</div>
+            <h1 class="title">Grace Period Extended</h1>
+        </div>
+
+        <div class="update-box">
+            <div class="update-icon">⏰</div>
+            <h2>Your Grace Period Has Been Extended!</h2>
+        </div>
+
+        <p>Dear {{name}},</p>
+
+        <div class="new-date">
+            🗓️ Your new grace period deadline: {{newGracePeriodEnds}}
+        </div>
+
+        <div class="reason-box">
+            <h3>📝 Reason for Extension:</h3>
+            <p>{{reason}}</p>
+        </div>
+
+        <div class="message">
+            <p>Good news! We've extended your grace period to give you more time to complete your student verification. This means you can continue enjoying all the benefits of your student status.</p>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-box">
+                <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+                <h4>Still Active</h4>
+                <p>Your student benefits remain active</p>
+            </div>
+            <div class="info-box">
+                <div style="font-size: 24px; margin-bottom: 8px;">🎯</div>
+                <h4>More Time</h4>
+                <p>Extended deadline for re-verification</p>
+            </div>
+            <div class="info-box">
+                <div style="font-size: 24px; margin-bottom: 8px;">💼</div>
+                <h4>Jobs Access</h4>
+                <p>Continue applying for student jobs</p>
+            </div>
+            <div class="info-box">
+                <div style="font-size: 24px; margin-bottom: 8px;">🎫</div>
+                <h4>Discounts</h4>
+                <p>Keep using student-exclusive deals</p>
+            </div>
+        </div>
+
+        <h3>🚀 Complete Your Re-verification Now:</h3>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{dashboardUrl}}" class="button">
+                Re-verify Your Status
+            </a>
+            <a href="{{supportUrl}}" class="button button-secondary">
+                Get Help
+            </a>
+        </div>
+
+        <div class="warning-box">
+            <h4>⚠️ Important</h4>
+            <p>While you have more time, we recommend completing your re-verification as soon as possible. Don't wait until the new deadline of {{newGracePeriodEnds}}.</p>
+        </div>
+
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin: 20px 0;">
+            <h3>📋 Quick Re-verification Checklist:</h3>
+            <ol style="margin: 0; padding-left: 20px;">
+                <li>Prepare current student ID (clear photo)</li>
+                <li>Gather proof of enrollment documents</li>
+                <li>Update your graduation information</li>
+                <li>Submit documents through verification dashboard</li>
+                <li>Wait for admin review (24-48 hours)</li>
+            </ol>
+        </div>
+
+        <div style="background-color: #e8f5e8; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <h3>💡 Why Re-verify Now?</h3>
+            <ul>
+                <li>✅ Avoid last-minute rush and stress</li>
+                <li>✅ Ensure continuous access to all features</li>
+                <li>✅ Stay eligible for new student opportunities</li>
+                <li>✅ Maintain your verified student reputation</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <p><strong>Questions about your extension?</strong></p>
+            <p>Our support team is here to help you through the re-verification process.</p>
+            <a href="{{supportUrl}}" style="color: #3498db; text-decoration: underline; font-weight: bold;">
+                Contact Support Team
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>We've extended your grace period to help you successfully complete your re-verification.</p>
+            <p>Your student status is important to us, and we're here to support you!</p>
+            <p>&copy; {{currentYear}} TalabaHub. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

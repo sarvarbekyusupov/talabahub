@@ -308,4 +308,227 @@ export class MailService {
       this.logger.error(`Failed to send discount notification to ${email}`, error.stack);
     }
   }
+
+  /**
+   * Send verification approval email
+   */
+  async sendVerificationApproved(
+    email: string,
+    name: string,
+    validUntil?: string,
+  ) {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: '🎉 Your Student Verification Has Been Approved!',
+        template: './verification-approved',
+        context: {
+          name,
+          dashboardUrl: `${this.configService.get('FRONTEND_URL')}/dashboard`,
+          validUntil: validUntil || 'Your graduation date',
+        },
+      });
+      this.logger.log(`Verification approval email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send verification approval email to ${email}`, error.stack);
+    }
+  }
+
+  /**
+   * Send verification rejection email
+   */
+  async sendVerificationRejected(
+    email: string,
+    name: string,
+    rejectionReason: string,
+    additionalNotes?: string,
+  ) {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Update on Your Student Verification',
+        template: './verification-rejected',
+        context: {
+          name,
+          rejectionReason,
+          additionalNotes,
+          resubmitUrl: `${this.configService.get('FRONTEND_URL')}/verification`,
+          supportUrl: `${this.configService.get('FRONTEND_URL')}/support`,
+        },
+      });
+      this.logger.log(`Verification rejection email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send verification rejection email to ${email}`, error.stack);
+    }
+  }
+
+  /**
+   * Send verification - more info needed email
+   */
+  async sendVerificationMoreInfo(
+    email: string,
+    name: string,
+    message: string,
+    specificRequirements?: string[],
+  ) {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Action Required: Additional Information for Verification',
+        template: './verification-more-info',
+        context: {
+          name,
+          message,
+          specificRequirements,
+          dashboardUrl: `${this.configService.get('FRONTEND_URL')}/verification`,
+          supportUrl: `${this.configService.get('FRONTEND_URL')}/support`,
+        },
+      });
+      this.logger.log(`Verification more info email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send verification more info email to ${email}`, error.stack);
+    }
+  }
+
+  /**
+   * Send re-verification required email
+   */
+  async sendReverificationRequired(
+    email: string,
+    name: string,
+    reason: string,
+    dueDate: Date,
+  ) {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Re-verification Required - Student Status',
+        template: './verification-more-info',
+        context: {
+          name,
+          message: `Your student verification requires renewal. Reason: ${reason}`,
+          specificRequirements: [
+            'Upload a current student ID',
+            'Provide proof of current enrollment',
+            'Update your expected graduation date'
+          ],
+          dashboardUrl: `${this.configService.get('FRONTEND_URL')}/verification`,
+          supportUrl: `${this.configService.get('FRONTEND_URL')}/support`,
+        },
+      });
+      this.logger.log(`Re-verification required email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send re-verification email to ${email}`, error.stack);
+    }
+  }
+
+  /**
+   * Send verification expired notification
+   */
+  async sendVerificationExpired(email: string, name: string, message: string) {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Your Student Verification Has Expired - TalabaHub',
+        template: './verification-expired',
+        context: {
+          name,
+          message,
+          dashboardUrl: `${this.configService.get('FRONTEND_URL')}/verification`,
+          supportUrl: `${this.configService.get('FRONTEND_URL')}/support`,
+          currentYear: new Date().getFullYear(),
+        },
+      });
+      this.logger.log(`Verification expired email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send verification expired email to ${email}`, error.stack);
+    }
+  }
+
+  /**
+   * Send verification expiring soon reminder
+   */
+  async sendVerificationExpiringSoon(
+    email: string,
+    name: string,
+    expirationDate: string,
+    message: string,
+  ) {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Your Student Verification Is Expiring Soon - TalabaHub',
+        template: './verification-expiring-soon',
+        context: {
+          name,
+          expirationDate,
+          message,
+          dashboardUrl: `${this.configService.get('FRONTEND_URL')}/verification`,
+          supportUrl: `${this.configService.get('FRONTEND_URL')}/support`,
+          currentYear: new Date().getFullYear(),
+        },
+      });
+      this.logger.log(`Verification expiring soon email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send verification expiring soon email to ${email}`, error.stack);
+    }
+  }
+
+  /**
+   * Send grace period started notification
+   */
+  async sendGracePeriodStarted(
+    email: string,
+    name: string,
+    gracePeriodEnds: string,
+    reason: string,
+  ) {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Grace Period Granted - TalabaHub',
+        template: './grace-period-started',
+        context: {
+          name,
+          gracePeriodEnds,
+          reason,
+          dashboardUrl: `${this.configService.get('FRONTEND_URL')}/verification`,
+          supportUrl: `${this.configService.get('FRONTEND_URL')}/support`,
+          currentYear: new Date().getFullYear(),
+        },
+      });
+      this.logger.log(`Grace period started email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send grace period started email to ${email}`, error.stack);
+    }
+  }
+
+  /**
+   * Send grace period extended notification
+   */
+  async sendGracePeriodExtended(
+    email: string,
+    name: string,
+    newGracePeriodEnds: string,
+    reason: string,
+  ) {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Grace Period Extended - TalabaHub',
+        template: './grace-period-extended',
+        context: {
+          name,
+          newGracePeriodEnds,
+          reason,
+          dashboardUrl: `${this.configService.get('FRONTEND_URL')}/verification`,
+          supportUrl: `${this.configService.get('FRONTEND_URL')}/support`,
+          currentYear: new Date().getFullYear(),
+        },
+      });
+      this.logger.log(`Grace period extended email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send grace period extended email to ${email}`, error.stack);
+    }
+  }
 }

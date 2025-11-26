@@ -19,6 +19,7 @@ enum UserVerificationStatus {
   email_verified
   pending_verification
   verified
+  grace_period
   verification_expired
   rejected
   suspended

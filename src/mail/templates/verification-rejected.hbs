@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verification Update</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #EF4444; color: white; padding: 20px; text-align: center; }
+        .content { background: #f9f9f9; padding: 30px; }
+        .button { display: inline-block; padding: 12px 30px; background: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        .rejection-box { background: #FEF2F2; border: 1px solid #FECACA; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .help-box { background: #EFF6FF; border: 1px solid #DBEAFE; padding: 20px; margin: 20px 0; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Verification Update</h1>
+        </div>
+        <div class="content">
+            <h2>Hi {{name}},</h2>
+            <p>We've reviewed your student verification request, but unfortunately, we couldn't approve it at this time.</p>
+
+            <div class="rejection-box">
+                <h3>Reason for Rejection:</h3>
+                <p><strong>{{rejectionReason}}</strong></p>
+                {{#if additionalNotes}}
+                <p><em>Additional Notes: {{additionalNotes}}</em></p>
+                {{/if}}
+            </div>
+
+            <h3>What You Can Do:</h3>
+
+            <div class="help-box">
+                <h4>📝 Re-submit Your Verification</h4>
+                <p>You can re-submit your verification with corrected documents. Please address the issues mentioned above and try again.</p>
+                <a href="{{resubmitUrl}}" class="button">Re-submit Verification</a>
+            </div>
+
+            <h3>Common Issues and Solutions:</h3>
+            <ul>
+                <li><strong>Unclear Documents:</strong> Upload high-quality, well-lit photos</li>
+                <li><strong>Name Mismatch:</strong> Ensure the name matches your registered account</li>
+                <li><strong>Expired ID:</strong> Use a current, valid student ID</li>
+                <li><strong>Missing Information:</strong> Complete all required fields</li>
+            </ul>
+
+            <p><strong>Need Help?</strong></p>
+            <p>If you believe this was a mistake or need assistance with your verification, our support team is here to help.</p>
+
+            <a href="{{supportUrl}}" class="button">Contact Support</a>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="color: #666; font-size: 14px;">
+                You can re-submit verification requests after 24 hours.
+            </p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 TalabaHub. All rights reserved.</p>
+            <p>University Students Platform for Uzbekistan</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -60,7 +60,8 @@ export class VerifiedUserGuard implements CanActivate {
       );
     }
 
-    if (dbUser.verificationStatus !== UserVerificationStatus.verified) {
+    if (dbUser.verificationStatus !== UserVerificationStatus.verified &&
+        dbUser.verificationStatus !== UserVerificationStatus.grace_period) {
       const messages: Record<UserVerificationStatus, string> = {
         [UserVerificationStatus.unverified]:
           'Please complete student verification to access this feature',
@@ -69,6 +70,7 @@ export class VerifiedUserGuard implements CanActivate {
         [UserVerificationStatus.pending_verification]:
           'Your verification is under review. Please wait for approval.',
         [UserVerificationStatus.verified]: '',
+        [UserVerificationStatus.grace_period]: '',
         [UserVerificationStatus.verification_expired]:
           'Your verification has expired. Please re-verify your student status.',
         [UserVerificationStatus.rejected]:

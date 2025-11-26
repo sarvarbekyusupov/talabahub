@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grace Period Granted - TalabaHub</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #27ae60;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        .title {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .success-box {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .success-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .grace-period-date {
+            background-color: #27ae60;
+            color: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .message {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #27ae60;
+        }
+        .button {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #2980b9;
+        }
+        .benefits {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .benefit {
+            background-color: white;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .benefit-icon {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        .steps {
+            margin: 20px 0;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+        }
+        .step-number {
+            display: inline-block;
+            background-color: #27ae60;
+            color: white;
+            width: 28px;
+            height: 28px;
+            text-align: center;
+            border-radius: 50%;
+            margin-right: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🎓 TalabaHub</div>
+            <h1 class="title">Grace Period Granted</h1>
+        </div>
+
+        <div class="success-box">
+            <div class="success-icon">✅</div>
+            <h2>Good News! You've Been Granted a Grace Period</h2>
+        </div>
+
+        <p>Dear {{name}},</p>
+
+        <div class="grace-period-date">
+            🗓️ Your grace period ends on: {{gracePeriodEnds}}
+        </div>
+
+        <div class="message">
+            <p>{{reason}}</p>
+        </div>
+
+        <div class="benefits">
+            <h3>🎉 What You Can Still Do During Your Grace Period:</h3>
+            <div class="benefits-grid">
+                <div class="benefit">
+                    <div class="benefit-icon">💼</div>
+                    <strong>Apply for Jobs</strong><br>
+                    <small>Continue accessing student opportunities</small>
+                </div>
+                <div class="benefit">
+                    <div class="benefit-icon">🎫</div>
+                    <strong>Get Discounts</strong><br>
+                    <small>Keep using student-exclusive deals</small>
+                </div>
+                <div class="benefit">
+                    <div class="benefit-icon">🎪</div>
+                    <strong>Attend Events</strong><br>
+                    <small>Join student workshops and networking</small>
+                </div>
+                <div class="benefit">
+                    <div class="benefit-icon">📚</div>
+                    <strong>Access Resources</strong><br>
+                    <small>Use educational materials and tools</small>
+                </div>
+            </div>
+        </div>
+
+        <h3>Quick Re-verification Steps:</h3>
+        <div class="steps">
+            <div class="step">
+                <span class="step-number">1</span>
+                <div>
+                    <strong>Log in to your account</strong><br>
+                    <small>Visit your TalabaHub dashboard</small>
+                </div>
+            </div>
+            <div class="step">
+                <span class="step-number">2</span>
+                <div>
+                    <strong>Go to verification page</strong><br>
+                    <small>Click the verification banner</small>
+                </div>
+            </div>
+            <div class="step">
+                <span class="step-number">3</span>
+                <div>
+                    <strong>Upload current documents</strong><br>
+                    <small>Student ID, enrollment letter, or transcript</small>
+                </div>
+            </div>
+            <div class="step">
+                <span class="step-number">4</span>
+                <div>
+                    <strong>Submit for review</strong><br>
+                    <small>Usually processed within 24-48 hours</small>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <a href="{{dashboardUrl}}" class="button">
+                Complete Your Re-verification
+            </a>
+        </div>
+
+        <div class="warning-box">
+            <h4>⏰ Important Reminder</h4>
+            <p>Don't wait until the last minute! Complete your re-verification before {{gracePeriodEnds}} to ensure uninterrupted access to all student benefits and features.</p>
+        </div>
+
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0;">
+            <h3>📋 Need Help With Re-verification?</h3>
+            <ul>
+                <li>📧 Email us at <a href="mailto:support@talabahub.uz" style="color: #3498db;">support@talabahub.uz</a></li>
+                <li>💬 Use our live chat support</li>
+                <li>📞 Call our student support hotline</li>
+                <li>📖 Check our verification FAQ</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>This grace period has been granted to ensure you have sufficient time to complete your re-verification.</p>
+            <p>We value your continued participation in the TalabaHub student community!</p>
+            <p>&copy; {{currentYear}} TalabaHub. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
