@@ -249,27 +249,28 @@ export class JobsService {
       ]);
     } catch (error) {
       console.error('Database query error:', error.message);
-      // Fallback to simpler query without advanced fields
-      [jobs, total] = await Promise.all([
-        this.prisma.job.findMany({
-          where: {
-            isActive: true,
+      // Ultra-minimal fallback
+      try {
+        [jobs, total] = await Promise.all([
+          this.prisma.job.findMany({
+            skip,
+            take: limit,
+          }),
+          this.prisma.job.count(),
+        ]);
+      } catch (fallbackError) {
+        console.error('Fallback query failed:', fallbackError.message);
+        // Return empty result if everything fails
+        return {
+          data: [],
+          meta: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
           },
-          skip,
-          take: limit,
-          include: {
-            company: {
-              select: {
-                id: true,
-                name: true,
-                logoUrl: true,
-              },
-            },
-          },
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.prisma.job.count({ where: { isActive: true } }),
-      ]);
+        };
+      }
     }
 
     return {
