@@ -351,11 +351,11 @@ jobs:
             echo "🗑️ Removing migration files to prevent auto-migration..."
             docker compose -f docker-compose.prod.yml exec -T backend rm -rf prisma/migrations || echo "Migrations already removed"
 
-            echo "⏳ Waiting 60s for application to fully start..."
-            sleep 60
+            echo "⏳ Waiting 120s for application to fully start..."
+            sleep 120
 
-            echo "📝 Recent logs:"
-            docker compose -f docker-compose.prod.yml logs --tail=50 backend
+            echo "📝 Checking application logs..."
+            docker compose -f docker-compose.prod.yml logs --tail=30 backend
 
             echo "🏥 Health check..."
             for i in 1 2 3 4 5; do
@@ -364,12 +364,15 @@ jobs:
                 docker image prune -f
                 exit 0
               fi
-              echo "Attempt $i/5 failed, retrying in 5s..."
-              sleep 5
+              echo "Attempt $i/5 failed, retrying in 10s..."
+              sleep 10
             done
 
-            echo "❌ Health check failed!"
+            echo "❌ Health check failed! Checking full logs..."
             docker compose -f docker-compose.prod.yml logs --tail=100 backend
+
+            echo "🔧 Final diagnostics - checking container status..."
+            docker compose -f docker-compose.prod.yml ps
             exit 1
 
       - name: Deployment status
