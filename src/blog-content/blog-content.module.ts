@@ -4,6 +4,7 @@ import { ArticlesController } from './controllers/articles.controller';
 import { TagsController } from './controllers/tags.controller';
 import { CommentsController } from './controllers/comments.controller';
 import { EngagementController } from './controllers/engagement.controller';
+import { FeedController } from './controllers/feed.controller';
 import { ArticlesService } from './services/articles.service';
 import { TagsService } from './services/tags.service';
 import { CommentsService } from './services/comments.service';
@@ -16,6 +17,7 @@ import { EngagementService } from './services/engagement.service';
     TagsController,
     CommentsController,
     EngagementController,
+    FeedController,
   ],
   providers: [
     ArticlesService,
