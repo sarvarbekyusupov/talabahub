@@ -3,6 +3,10 @@
 </p>
 
 [circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+
+## Deployment Status
+Backend API: http://3.121.174.54:3030
+Latest deployment with Blog-Content, Verification, and Resume systems enabled.
 [circleci-url]: https://circleci.com/gh/nestjs/nest
 
   <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
