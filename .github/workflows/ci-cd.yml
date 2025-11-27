@@ -339,6 +339,10 @@ jobs:
 
             echo "✅ Basic database setup completed"
 
+            # Remove migration files from container to prevent auto-migration
+            echo "🗑️ Removing migration files to prevent auto-migration..."
+            docker compose -f docker-compose.prod.yml exec -T backend rm -rf prisma/migrations || echo "Migrations already removed"
+
             echo "⏳ Waiting 60s for application to fully start..."
             sleep 60
 
