@@ -330,14 +330,17 @@ jobs:
             done
             echo "✅ Database is ready"
 
-            # Simple database setup - just create extension and basic schema
-            echo "🔧 Setting up basic database..."
+            # Complete migration table cleanup to prevent auto-migration
+            echo "🔧 Cleaning up migration state completely..."
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQL'
+            -- Drop migration table completely
+            DROP TABLE IF EXISTS _prisma_migrations CASCADE;
+
             -- Enable UUID extension
             CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
             SQL
 
-            echo "✅ Basic database setup completed"
+            echo "✅ Migration state cleanup completed"
 
             # Remove migration files from container to prevent auto-migration
             echo "🗑️ Removing migration files to prevent auto-migration..."
