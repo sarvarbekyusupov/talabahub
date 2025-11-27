@@ -22,7 +22,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
     "db:seed": "npm run prisma:seed",
-    "db:reset": "prisma migrate reset --force"
+    "db:reset": "prisma migrate reset --force",
+    "db:push:prod": "prisma db push --force-reset --accept-data-loss"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

@@ -322,7 +322,7 @@ jobs:
             echo "📋 Container status:"
             docker compose -f docker-compose.prod.yml ps
 
-            echo "🔧 Fixing database migration conflicts..."
+            echo "🔧 Production Database Setup (No Migrations)..."
             # Wait for database to be ready
             until docker compose -f docker-compose.prod.yml exec -T postgres pg_isready -U talabahub > /dev/null 2>&1; do
               echo "Database not ready, waiting 5s..."
@@ -330,95 +330,62 @@ jobs:
             done
             echo "✅ Database is ready"
 
-            # Complete database reset - remove all tables and schema
-            echo "🔧 Complete database reset to remove all schema..."
-            docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQL'
-            -- Drop entire schema to start completely fresh
-            DROP SCHEMA public CASCADE;
-            CREATE SCHEMA public;
+            echo "🗑️ Removing migration files to avoid conflicts..."
+            docker compose -f docker-compose.prod.yml exec -T backend rm -rf /app/prisma/migrations || echo "No migrations found"
 
-            -- Grant permissions
-            GRANT ALL ON SCHEMA public TO postgres;
-            GRANT ALL ON SCHEMA public TO public;
+            echo "🔧 Using prisma db push to create schema (Migration-free approach)..."
+            docker compose -f docker-compose.prod.yml exec -T backend npm run db:push:prod
 
-            -- Enable UUID extension
-            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-            SQL
+            echo "⏳ Waiting for schema to be applied..."
+            sleep 15
 
-            echo "✅ Complete database reset completed"
+            echo "🌱 Seeding database with initial data..."
+            docker compose -f docker-compose.prod.yml exec -T backend npm run db:seed
 
-            # Remove migration files from container to prevent auto-migration
-            echo "🗑️ Removing migration files to prevent auto-migration..."
-            docker compose -f docker-compose.prod.yml exec -T backend rm -rf prisma/migrations || echo "Migrations already removed"
+            echo "⏳ Waiting for seed data to be applied..."
+            sleep 10
 
-            echo "⏳ Waiting 120s for application to fully start..."
-            sleep 120
+            echo "🔄 Restarting backend to ensure clean start..."
+            docker compose -f docker-compose.prod.yml restart backend
 
-            echo "📝 Checking application logs..."
-            docker compose -f docker-compose.prod.yml logs --tail=30 backend
+            echo "⏳ Waiting for backend to start..."
+            sleep 30
 
             echo "🏥 Health check..."
-            for i in 1 2 3 4 5; do
+            for i in 1 2 3 4 5 6 7 8 9 10; do
               if curl -sf http://localhost:3030/api/health/live > /dev/null; then
-                echo "✅ Deployment successful!"
+                echo "✅ SUCCESS! API is running with migration-free deployment"
+
+                echo "🧪 Testing critical endpoints..."
+                echo "Testing /api/feed/latest endpoint..."
+                if curl -sf http://localhost:3030/api/feed/latest > /dev/null 2>&1; then
+                  echo "✅ /api/feed/latest endpoint working"
+                else
+                  echo "⚠️ /api/feed/latest endpoint not responding"
+                fi
+
+                echo "Testing /api/jobs endpoint..."
+                if curl -sf http://localhost:3030/api/jobs > /dev/null 2>&1; then
+                  echo "✅ /api/jobs endpoint working"
+                else
+                  echo "⚠️ /api/jobs endpoint not responding"
+                fi
+
+                echo "🎉 Migration-free deployment successful!"
+                echo "🚀 Frontend can connect to http://3.69.242.100:3030"
+
                 docker image prune -f
                 exit 0
               fi
-              echo "Attempt $i/5 failed, retrying in 10s..."
+              echo "Health check attempt $i/10 failed, retrying in 10s..."
               sleep 10
             done
 
-            echo "❌ Health check failed! Checking full logs..."
-            docker compose -f docker-compose.prod.yml logs --tail=100 backend
-
-            echo "🔧 Final diagnostics - checking container status..."
+            echo "❌ Health check failed after 10 attempts"
+            echo "Container status:"
             docker compose -f docker-compose.prod.yml ps
-
-            echo "📋 Checking individual container logs..."
-            docker compose -f docker-compose.prod.yml logs --tail=50 postgres || echo "Postgres logs not available"
-            docker compose -f docker-compose.prod.yml logs --tail=50 redis || echo "Redis logs not available"
-            docker compose -f docker-compose.prod.yml logs --tail=100 backend || echo "Backend logs not available"
-
-            echo "🔍 Manual intervention attempt - running emergency fix..."
-            # Try to run prisma db push directly
-            echo "Running prisma db push to create missing tables..."
-            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --force-reset --accept-data-loss || echo "Manual prisma push failed"
-
-            # Wait a bit for schema to be applied
-            sleep 30
-
-            # Try to seed database
-            echo "Running database seed..."
-            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db seed || echo "Manual seed failed"
-
-            echo "🔄 Restarting backend one more time..."
-            docker compose -f docker-compose.prod.yml restart backend
-
-            echo "⏳ Final wait for backend to start..."
-            sleep 60
-
-            echo "🏥 Final health check..."
-            if curl -sf http://localhost:3030/api/health/live > /dev/null; then
-              echo "✅ SUCCESS after manual intervention!"
-
-              echo "🧪 Testing critical endpoints..."
-              echo "Testing /api/jobs endpoint..."
-              if curl -sf http://localhost:3030/api/jobs > /dev/null 2>&1; then
-                echo "✅ /api/jobs endpoint working"
-              else
-                echo "⚠️ /api/jobs endpoint still has issues"
-              fi
-
-              echo "Testing /api/health/live endpoint..."
-              if curl -sf http://localhost:3030/api/health/live > /dev/null 2>&1; then
-                echo "✅ Health endpoint working"
-              else
-                echo "⚠️ Health endpoint still has issues"
-              fi
-
-              docker image prune -f
-              exit 0
-            fi
+            echo "Backend logs:"
+            docker compose -f docker-compose.prod.yml logs --tail=50 backend
 
             exit 1
 
