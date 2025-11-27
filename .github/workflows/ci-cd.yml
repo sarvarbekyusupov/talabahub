@@ -330,22 +330,34 @@ jobs:
             done
             echo "✅ Database is ready"
 
-            # Complete migration reset and cleanup
-            echo "🔧 Complete migration system reset..."
+            # Complete database and migration reset
+            echo "🔧 Complete database and migration reset..."
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQL'
             -- Drop entire migration table to reset state
-            DROP TABLE IF EXISTS _prisma_migrations;
+            DROP TABLE IF EXISTS _prisma_migrations CASCADE;
 
-            -- Remove any problematic audit_logs table if it exists
-            DROP TABLE IF EXISTS audit_logs CASCADE;
+            -- Drop all enum types that cause conflicts
+            DROP TYPE IF EXISTS user_verification_status CASCADE;
+            DROP TYPE IF EXISTS resume_status CASCADE;
+            DROP TYPE IF EXISTS application_status CASCADE;
+            DROP TYPE IF EXISTS blog_post_status CASCADE;
+            DROP TYPE IF EXISTS comment_status CASCADE;
 
-            -- Remove any sequences related to audit_logs
-            DROP SEQUENCE IF EXISTS audit_logs_id_seq CASCADE;
+            -- Enable UUID extension properly
+            CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+            -- Remove all tables to start fresh
+            DROP SCHEMA public CASCADE;
+            CREATE SCHEMA public;
+
+            -- Grant permissions
+            GRANT ALL ON SCHEMA public TO postgres;
+            GRANT ALL ON SCHEMA public TO public;
             SQL
 
-            # Use db push instead of migrate deploy to avoid conflicts
-            echo "📦 Pushing schema changes (production safe)..."
-            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --force-reset --accept-data-loss
+            # Use db push only - no migrations at all
+            echo "📦 Creating fresh schema with db push only..."
+            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --accept-data-loss
 
             echo "✅ Schema sync completed"
 
