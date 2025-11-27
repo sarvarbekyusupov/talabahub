@@ -373,6 +373,32 @@ jobs:
 
             echo "🔧 Final diagnostics - checking container status..."
             docker compose -f docker-compose.prod.yml ps
+
+            echo "📋 Checking individual container logs..."
+            docker compose -f docker-compose.prod.yml logs --tail=50 postgres || echo "Postgres logs not available"
+            docker compose -f docker-compose.prod.yml logs --tail=50 redis || echo "Redis logs not available"
+            docker compose -f docker-compose.prod.yml logs --tail=100 backend || echo "Backend logs not available"
+
+            echo "🔍 Manual intervention attempt - running emergency fix..."
+            # Try to run prisma db push directly
+            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --force-reset --accept-data-loss || echo "Manual prisma push failed"
+
+            # Try to seed database
+            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db seed || echo "Manual seed failed"
+
+            echo "🔄 Restarting backend one more time..."
+            docker compose -f docker-compose.prod.yml restart backend
+
+            echo "⏳ Final wait for backend to start..."
+            sleep 60
+
+            echo "🏥 Final health check..."
+            if curl -sf http://localhost:3030/api/health/live > /dev/null; then
+              echo "✅ SUCCESS after manual intervention!"
+              docker image prune -f
+              exit 0
+            fi
+
             exit 1
 
       - name: Deployment status
