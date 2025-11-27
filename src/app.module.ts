@@ -31,8 +31,8 @@ import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { BlogContentModule } from './blog-content/blog-content.module'; // Rebuilt with proper database schema
-// import { ResumesModule } from './resumes/resumes.module'; // Disabled - resume model doesn't exist
-// import { VerificationModule } from './verification.disabled/verification.module'; // Disabled - database tables don't exist
+import { ResumesModule } from './resumes/resumes.module'; // Rebuilt with proper database schema
+import { VerificationModule } from './verification/verification.module'; // Rebuilt with proper database schema
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -78,8 +78,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     NotificationsModule,
     AnalyticsModule,
     BlogContentModule, // Rebuilt with proper database schema
-    // ResumesModule, // Disabled - resume model doesn't exist
-    // VerificationModule, // Disabled - database tables don't exist
+    ResumesModule, // Rebuilt with proper database schema
+    VerificationModule, // Rebuilt with proper database schema
   ],
   controllers: [AppController],
   providers: [
