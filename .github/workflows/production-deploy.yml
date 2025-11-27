@@ -1,4 +1,4 @@
-name: 🚀 Deploy Backend
+name: Deploy Production
 
 on:
   push:
@@ -9,10 +9,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🔐 Setup SSH
+      - name: Setup SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.HOST }}
@@ -60,16 +60,15 @@ jobs:
             THROTTLE_TTL=60000
             THROTTLE_LIMIT=10
             ENVEOF
-              echo "⚠️  .env file created with default values. Please update with real credentials!"
+              echo "WARNING: .env file created with default values. Please update with real credentials!"
             fi
 
             # Create logs directory with proper permissions
             mkdir -p logs
-            # Set permissions so the container's nestjs user (uid 1001) can write
             chmod 777 logs
 
-            # Stop and remove only our containers (won't affect other projects)
-            echo "🧹 Cleaning up old containers..."
+            # Stop and remove only our containers
+            echo "Cleaning up old containers..."
             docker stop talabahub-backend talabahub-postgres talabahub-redis 2>/dev/null || true
             docker rm talabahub-backend talabahub-postgres talabahub-redis 2>/dev/null || true
             docker compose -f docker-compose.prod.yml down 2>/dev/null || true
@@ -167,45 +166,45 @@ jobs:
                 driver: bridge
             EOF
 
-            echo "📦 Pulling latest images..."
+            echo "Pulling latest images..."
             docker compose -f docker-compose.prod.yml pull
 
-            echo "🚀 Starting services..."
+            echo "Starting services..."
             docker compose -f docker-compose.prod.yml up -d
 
-            echo "⏳ Waiting 30s for startup..."
+            echo "Waiting 30s for startup..."
             sleep 30
 
-            echo "📋 Container status:"
+            echo "Container status:"
             docker compose -f docker-compose.prod.yml ps
 
-            echo "🔧 Fixing database migration conflicts..."
+            echo "FIXING DATABASE MIGRATION CONFLICTS..."
             # Wait for database to be ready
             until docker compose -f docker-compose.prod.yml exec -T postgres pg_isready -U talabahub > /dev/null 2>&1; do
               echo "Database not ready, waiting 5s..."
               sleep 5
             done
-            echo "✅ Database is ready"
+            echo "Database is ready"
 
             # Clean up failed migration state
-            echo "🧹 Cleaning up failed migration state..."
+            echo "Cleaning up stuck migration entries..."
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQL' || echo "Migration cleanup completed"
             DELETE FROM _prisma_migrations WHERE migration_name IN ('20251127040221_add_blog_verification_resume_features', 'add_audit_log');
             SQL
 
             # Use db push instead of migrate deploy to avoid conflicts
-            echo "📦 Pushing schema changes (production safe)..."
+            echo "Pushing schema changes (production safe)..."
             docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --accept-data-loss
 
-            echo "✅ Schema sync completed"
+            echo "Schema sync completed"
 
-            echo "🌱 Seeding database with test data..."
-            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db seed 2>&1 | tee /tmp/seed.log || echo "⚠️  Seed failed or already seeded"
+            echo "Seeding database with test data..."
+            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db seed 2>&1 | tee /tmp/seed.log || echo "Seed failed or already seeded"
 
-            echo "📄 Seed output:"
+            echo "Seed output:"
             cat /tmp/seed.log || echo "No seed log available"
 
-            echo "🔍 Ensuring test users exist..."
+            echo "Ensuring test users exist..."
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQLEOF'
             -- Admin user
             INSERT INTO users (id, email, password_hash, first_name, last_name, role, verification_status, is_active, is_email_verified, created_at, updated_at)
@@ -270,18 +269,18 @@ jobs:
               is_email_verified = EXCLUDED.is_email_verified,
               updated_at = NOW();
             SQLEOF
-            echo "✅ Test users created/updated (admin, student, partner)"
+            echo "Test users created/updated (admin, student, partner)"
 
-            echo "📊 Current test users in database:"
+            echo "Current test users in database:"
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub -c "SELECT email, first_name, last_name, role, is_active, is_email_verified FROM users WHERE email IN ('admin@talabahub.com', 'student@talabahub.com', 'partner@talabahub.com');" || echo "Failed to query database"
 
-            echo "📝 Recent logs:"
-            docker compose -f docker-compose.prod.yml logs --tail=50 backend
+            echo "Recent logs:"
+            docker compose -f docker-compose.prod.yml logs --tail=30 backend
 
-            echo "🏥 Health check..."
+            echo "Health check..."
             for i in 1 2 3 4 5; do
               if curl -sf http://localhost:3030/api/health/live > /dev/null; then
-                echo "✅ Deployment successful!"
+                echo "Deployment successful!"
                 docker image prune -f
                 exit 0
               fi
@@ -289,6 +288,6 @@ jobs:
               sleep 5
             done
 
-            echo "❌ Health check failed!"
+            echo "Health check failed!"
             docker compose -f docker-compose.prod.yml logs --tail=100 backend
             exit 1
