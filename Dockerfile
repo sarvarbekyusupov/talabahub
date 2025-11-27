@@ -81,6 +81,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 
-# Start application (migrations will run before starting)
-# Resolve any failed migrations first, then deploy
-CMD ["sh", "-c", "npx prisma migrate resolve --applied add_audit_log || true && npx prisma migrate deploy && node dist/src/main"]
+# Start application (migration-free approach)
+CMD ["node", "dist/src/main"]
