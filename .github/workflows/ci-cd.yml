@@ -355,17 +355,19 @@ jobs:
             GRANT ALL ON SCHEMA public TO public;
             SQL
 
+            # Remove migration files to prevent auto-migration
+            echo "🗑️ Removing migration files to prevent conflicts..."
+            docker compose -f docker-compose.prod.yml exec -T backend rm -rf prisma/migrations || echo "Migrations already removed"
+
             # Use db push only - no migrations at all
             echo "📦 Creating fresh schema with db push only..."
             docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --accept-data-loss
 
             echo "✅ Schema sync completed"
 
-            echo "🌱 Seeding database with test data..."
-            docker compose -f docker-compose.prod.yml exec -T backend npx prisma db seed 2>&1 | tee /tmp/seed.log || echo "⚠️  Seed failed or already seeded"
-
-            echo "📄 Seed output:"
-            cat /tmp/seed.log || echo "No seed log available"
+            echo "🌱 Creating test users directly (skip broken seed)..."
+            # Skip the broken seed command that triggers migrations
+            # Create test users directly instead
 
             echo "🔍 Ensuring test users exist..."
             docker compose -f docker-compose.prod.yml exec -T postgres psql -U talabahub -d talabahub <<'SQLEOF'
