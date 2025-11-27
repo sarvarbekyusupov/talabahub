@@ -30,7 +30,7 @@ import { SearchModule } from './search/search.module';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AnalyticsModule } from './analytics/analytics.module';
-// import { BlogContentModule } from './blog-content/blog-content.module'; // Module removed
+import { BlogContentModule } from './blog-content/blog-content.module'; // Rebuilt with proper database schema
 // import { ResumesModule } from './resumes/resumes.module'; // Disabled - resume model doesn't exist
 // import { VerificationModule } from './verification.disabled/verification.module'; // Disabled - database tables don't exist
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -77,7 +77,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     SavedSearchesModule,
     NotificationsModule,
     AnalyticsModule,
-    // BlogContentModule, // Module removed
+    BlogContentModule, // Rebuilt with proper database schema
     // ResumesModule, // Disabled - resume model doesn't exist
     // VerificationModule, // Disabled - database tables don't exist
   ],
