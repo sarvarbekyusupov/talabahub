@@ -381,9 +381,14 @@ jobs:
 
             echo "🔍 Manual intervention attempt - running emergency fix..."
             # Try to run prisma db push directly
+            echo "Running prisma db push to create missing tables..."
             docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --force-reset --accept-data-loss || echo "Manual prisma push failed"
 
+            # Wait a bit for schema to be applied
+            sleep 30
+
             # Try to seed database
+            echo "Running database seed..."
             docker compose -f docker-compose.prod.yml exec -T backend npx prisma db seed || echo "Manual seed failed"
 
             echo "🔄 Restarting backend one more time..."
@@ -395,6 +400,22 @@ jobs:
             echo "🏥 Final health check..."
             if curl -sf http://localhost:3030/api/health/live > /dev/null; then
               echo "✅ SUCCESS after manual intervention!"
+
+              echo "🧪 Testing critical endpoints..."
+              echo "Testing /api/jobs endpoint..."
+              if curl -sf http://localhost:3030/api/jobs > /dev/null 2>&1; then
+                echo "✅ /api/jobs endpoint working"
+              else
+                echo "⚠️ /api/jobs endpoint still has issues"
+              fi
+
+              echo "Testing /api/health/live endpoint..."
+              if curl -sf http://localhost:3030/api/health/live > /dev/null 2>&1; then
+                echo "✅ Health endpoint working"
+              else
+                echo "⚠️ Health endpoint still has issues"
+              fi
+
               docker image prune -f
               exit 0
             fi
